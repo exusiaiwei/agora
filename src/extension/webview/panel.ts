@@ -155,6 +155,10 @@ export class AgoraPanel {
         this.sendContext();
         return { ok: true };
       }
+      case 'openCompose': {
+        this.navigate({ kind: 'navigate', to: { view: 'compose' } });
+        return { ok: true };
+      }
       default:
         if (isWriteRpc(req)) {
           return dispatchWriteRpc(req, this.deps);

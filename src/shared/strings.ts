@@ -47,6 +47,10 @@ export interface WebviewStringsDTO {
   composerEdit: string;
   composerShortcutHint: string;
   composerNothingToPreview: string;
+  composerCategoryLabel: string;
+  composerTitleLabel: string;
+  composerTitlePlaceholder: string;
+  composerBodyLabel: string;
   // Moderation
   markAsAnswer: string;
   unmarkAsAnswer: string;

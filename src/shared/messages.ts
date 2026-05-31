@@ -19,6 +19,7 @@ export type WebviewRequest =
   | { kind: 'openInBrowser'; url: string }
   | { kind: 'signIn' }
   | { kind: 'redetectRepo' }
+  | { kind: 'openCompose' }
   // ── Writes ─────────────────────────────────────────────────
   | { kind: 'addDiscussion'; categoryId: string; title: string; body: string }
   | { kind: 'updateDiscussion'; discussionId: string; title?: string; body?: string; categoryId?: string }
@@ -48,7 +49,13 @@ export type HostEvent =
       locale: string;
       strings: WebviewStringsDTO;
     }
-  | { kind: 'navigate'; to: { view: 'list' } | { view: 'discussion'; number: number } }
+  | {
+      kind: 'navigate';
+      to:
+        | { view: 'list' }
+        | { view: 'discussion'; number: number }
+        | { view: 'compose' };
+    }
   | { kind: 'refresh' };
 
 export interface HostEventMessage {
@@ -63,6 +70,7 @@ export type HostRpcResult<R extends WebviewRequest> =
   R extends { kind: 'openInBrowser' } ? { ok: true } :
   R extends { kind: 'signIn' } ? { ok: true } :
   R extends { kind: 'redetectRepo' } ? { ok: true } :
+  R extends { kind: 'openCompose' } ? { ok: true } :
   R extends { kind: 'addDiscussion' } ? { number: number; url: string } :
   R extends { kind: 'updateDiscussion' } ? { ok: true } :
   R extends { kind: 'deleteDiscussion' } ? { ok: true } :

@@ -77,6 +77,12 @@
         "icon": "$(comment-discussion)"
       },
       {
+        "command": "agora.newDiscussion",
+        "title": "%agora.command.newDiscussion%",
+        "category": "Agora",
+        "icon": "$(add)"
+      },
+      {
         "command": "agora.openDiscussion",
         "title": "%agora.command.openDiscussion%",
         "category": "Agora"

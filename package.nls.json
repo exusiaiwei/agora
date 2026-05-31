@@ -7,6 +7,7 @@
   "agora.command.signOut": "Sign out",
   "agora.command.refresh": "Refresh",
   "agora.command.openHome": "Open Discussions",
+  "agora.command.newDiscussion": "New discussion",
   "agora.command.openDiscussion": "Open discussion",
   "agora.command.openInBrowser": "Open on GitHub",
   "agora.config.repository": "Override the repository (owner/name). Leave empty to auto-detect from the current workspace's git remote.",

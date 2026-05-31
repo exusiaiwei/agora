@@ -15,10 +15,14 @@ import { DiscussionList } from './components/DiscussionList';
 import { Thread } from './components/Thread';
 import { Button, EmptyState, Spinner } from './components/primitives';
 import { SidebarApp } from './components/SidebarApp';
+import { NewDiscussionView } from './components/NewDiscussionView';
 
 export type AgoraMode = 'sidebar' | 'panel';
 
-type View = { name: 'list' } | { name: 'thread'; number: number };
+type View =
+  | { name: 'list' }
+  | { name: 'thread'; number: number }
+  | { name: 'compose' };
 
 interface AppState {
   view: View;
@@ -148,6 +152,8 @@ function PanelApp(): JSX.Element {
       } else if (event.kind === 'navigate') {
         if (event.to.view === 'list') {
           dispatch({ type: 'navigate', view: { name: 'list' } });
+        } else if (event.to.view === 'compose') {
+          dispatch({ type: 'navigate', view: { name: 'compose' } });
         } else {
           void loadThread(event.to.number);
         }
@@ -155,7 +161,7 @@ function PanelApp(): JSX.Element {
         const s = stateRef.current;
         if (s.view.name === 'list') {
           void loadList(s.list.selectedCategoryId);
-        } else {
+        } else if (s.view.name === 'thread') {
           void loadThread(s.view.number);
         }
       }
@@ -214,6 +220,17 @@ function AppBody({
               {strings.refresh}
             </Button>
           }
+        />
+      </Layout>
+    );
+  }
+
+  if (state.view.name === 'compose') {
+    return (
+      <Layout>
+        <NewDiscussionView
+          onCancel={() => dispatch({ type: 'navigate', view: { name: 'list' } })}
+          onCreated={(number) => loadThread(number)}
         />
       </Layout>
     );

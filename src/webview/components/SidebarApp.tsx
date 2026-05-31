@@ -184,6 +184,14 @@ function SidebarHeader({
         </div>
         <button
           type="button"
+          onClick={() => rpc({ kind: 'openCompose' })}
+          title={strings.newDiscussion}
+          className="inline-flex items-center justify-center w-6 h-6 rounded text-fg/70 hover:text-fg hover:bg-hover"
+        >
+          <span className="codicon codicon-add" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
           onClick={onRefresh}
           title={strings.refresh}
           className="inline-flex items-center justify-center w-6 h-6 rounded text-fg/70 hover:text-fg hover:bg-hover"

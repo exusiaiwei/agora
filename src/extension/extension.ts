@@ -78,6 +78,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('agora.openHome', () => {
       AgoraPanel.reveal(deps, { kind: 'navigate', to: { view: 'list' } });
     }),
+    vscode.commands.registerCommand('agora.newDiscussion', () => {
+      AgoraPanel.reveal(deps, { kind: 'navigate', to: { view: 'compose' } });
+    }),
     vscode.commands.registerCommand('agora.openDiscussion', (numberOrSummary: unknown) => {
       const number =
         typeof numberOrSummary === 'number'

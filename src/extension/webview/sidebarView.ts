@@ -132,6 +132,10 @@ export class AgoraSidebarView implements vscode.WebviewViewProvider {
         this.sendContext();
         return { ok: true };
       }
+      case 'openCompose': {
+        await vscode.commands.executeCommand('agora.newDiscussion');
+        return { ok: true };
+      }
       default:
         if (isWriteRpc(req)) {
           return dispatchWriteRpc(req, this.deps);
