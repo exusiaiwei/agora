@@ -5,6 +5,7 @@
   "Loading discussion…": "正在加载讨论…",
   "No discussions yet.": "暂无讨论。",
   "No discussions in this category.": "该分类下暂无讨论。",
+  "No discussions": "暂无讨论",
   "Failed to load discussions": "加载讨论失败",
   "No GitHub repository detected": "未检测到 GitHub 仓库",
   "Open a folder with a GitHub remote, or set agora.repository in Settings.": "请打开包含 GitHub remote 的目录，或在设置中配置 agora.repository。",

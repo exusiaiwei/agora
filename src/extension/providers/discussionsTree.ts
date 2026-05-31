@@ -84,9 +84,7 @@ export class DiscussionsTreeProvider
         const d = node.discussion;
         const item = new vscode.TreeItem(d.title, vscode.TreeItemCollapsibleState.None);
         item.id = `discussion:${d.id}`;
-        // Leaf rows intentionally have no iconPath: the tree's indent
-        // guide already sits in the icon column, and a codicon there
-        // visually collides with the guide line.
+        item.iconPath = iconFor(d);
         item.description = describeDiscussion(d);
         item.contextValue = 'discussion';
         item.tooltip = new vscode.MarkdownString(
@@ -187,7 +185,7 @@ export class DiscussionsTreeProvider
     }
     const nodes: Node[] = cache.discussions.map((d) => ({ kind: 'discussion', discussion: d }));
     if (cache.discussions.length === 0) {
-      nodes.push({ kind: 'info', label: vscode.l10n.t('No discussions in this category.') });
+      nodes.push({ kind: 'info', label: vscode.l10n.t('No discussions') });
     }
     if (cache.hasNextPage && cache.cursor) {
       nodes.push({ kind: 'loadMore', categoryId, cursor: cache.cursor });
@@ -229,13 +227,22 @@ export class DiscussionsTreeProvider
 }
 
 function describeDiscussion(d: DiscussionSummary): string {
-  const parts: string[] = [];
-  if (d.answered) parts.push('✓');
-  else if (d.locked) parts.push('🔒');
-  else if (d.closed) parts.push('—');
-  parts.push(`#${d.number}`);
-  if (d.commentCount > 0) parts.push(`💬 ${d.commentCount}`);
-  return parts.join(' · ');
+  // Status is already expressed by the leading ThemeIcon — keep the
+  // description column lightweight to avoid duplicating the same signal.
+  if (d.commentCount > 0) return `#${d.number} · ${d.commentCount}`;
+  return `#${d.number}`;
+}
+
+function iconFor(d: DiscussionSummary): vscode.ThemeIcon {
+  // Prefer codicons whose shape is dominated by horizontals or rounded
+  // forms — they don't visually clash with the TreeView indent guide
+  // (which is a vertical line in the same column).
+  if (d.answered) {
+    return new vscode.ThemeIcon('pass-filled', new vscode.ThemeColor('testing.iconPassed'));
+  }
+  if (d.locked) return new vscode.ThemeIcon('lock');
+  if (d.closed) return new vscode.ThemeIcon('check');
+  return new vscode.ThemeIcon('comment');
 }
 
 function relativeTime(iso: string): string {
