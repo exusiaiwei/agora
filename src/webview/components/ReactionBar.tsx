@@ -118,6 +118,12 @@ export function ReactionBar({
             disabled={!canReact || busy}
             onClick={() => void toggle(g.content, reacted)}
             title={REACTION_LABEL[g.content]}
+            // Emoji is decorative; the only visible text is the
+            // count, so without aria-label a screen reader would
+            // just hear a bare number. The chip is a toggle, so
+            // aria-pressed conveys whether the viewer reacted.
+            aria-label={`${REACTION_LABEL[g.content]}, ${g.count}`}
+            aria-pressed={reacted}
             className={cn(
               'inline-flex items-center gap-1 h-[24px] px-1.5 rounded-full border text-xs tabular-nums transition-colors duration-100',
               reacted
@@ -154,6 +160,7 @@ export function ReactionBar({
       {pickerOpen && (
         <div
           role="menu"
+          aria-label={strings.addReaction}
           className={cn(
             'absolute z-50 left-0 top-full mt-1.5 flex gap-0.5 p-1 rounded-md',
             'bg-[var(--vscode-menu-background,var(--vscode-editor-background))]',
@@ -169,7 +176,12 @@ export function ReactionBar({
               <button
                 key={content}
                 type="button"
-                role="menuitem"
+                // menuitemcheckbox + aria-checked because each entry
+                // is a toggle of an independent reaction state, not
+                // a mutually-exclusive selection.
+                role="menuitemcheckbox"
+                aria-checked={reacted}
+                aria-label={REACTION_LABEL[content]}
                 disabled={busy}
                 title={REACTION_LABEL[content]}
                 onClick={() => {
