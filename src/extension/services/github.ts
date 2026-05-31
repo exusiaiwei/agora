@@ -147,11 +147,20 @@ export class GitHubService {
   }
 }
 
+function emojiFromCategory(c: RawCategory): string {
+  // GitHub returns shortcodes like ":bulb:" in `emoji` and a small HTML
+  // wrapper around the actual Unicode codepoint in `emojiHTML`
+  // (`<div><g-emoji ...>💡</g-emoji></div>`). Strip tags to recover the
+  // codepoint; fall back to the shortcode if anything looks empty.
+  const stripped = (c.emojiHTML ?? '').replace(/<[^>]*>/g, '').trim();
+  return stripped || c.emoji;
+}
+
 function mapCategory(c: RawCategory): Category {
   return {
     id: c.id,
     name: c.name,
-    emoji: c.emoji,
+    emoji: emojiFromCategory(c),
     emojiHTML: c.emojiHTML,
     description: c.description,
     isAnswerable: c.isAnswerable,
@@ -170,7 +179,7 @@ function mapSummary(d: RawDiscussionSummary): DiscussionSummary {
       ? { login: d.author.login, avatarUrl: d.author.avatarUrl, url: d.author.url }
       : null,
     category: mapCategory(d.category),
-    commentCount: d.comments.totalCount,
+    commentCount: d.commentTotal.totalCount,
     upvoteCount: d.upvoteCount,
     viewerHasUpvoted: d.viewerHasUpvoted,
     locked: d.locked,
@@ -239,7 +248,7 @@ interface RawDiscussionSummary {
   updatedAt: string;
   author: RawAuthor | null;
   category: RawCategory;
-  comments: { totalCount: number };
+  commentTotal: { totalCount: number };
   upvoteCount: number;
   viewerHasUpvoted: boolean;
   locked: boolean;
@@ -341,7 +350,7 @@ const DISCUSSION_SUMMARY_FRAGMENT = /* GraphQL */ `
       description
       isAnswerable
     }
-    comments { totalCount }
+    commentTotal: comments { totalCount }
     labels(first: 10) {
       nodes { id name color description }
     }
