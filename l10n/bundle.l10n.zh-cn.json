@@ -1,0 +1,13 @@
+{
+  "Sign in failed: {0}": "登录失败：{0}",
+  "Could not detect a GitHub repository in this workspace.": "未能在当前工作区检测到 GitHub 仓库。",
+  "Loading discussions…": "正在加载讨论…",
+  "No discussions yet.": "暂无讨论。",
+  "All categories": "全部分类",
+  "Reply": "回复",
+  "Replies": "回复",
+  "Answer": "答案",
+  "Marked as answer": "已标记为答案",
+  "Open in browser": "在浏览器中打开",
+  "Refresh": "刷新"
+}

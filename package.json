@@ -1,0 +1,163 @@
+{
+  "name": "agora",
+  "displayName": "Agora",
+  "description": "GitHub Discussions, natively in your editor.",
+  "version": "0.0.1",
+  "publisher": "exusiaiwei",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/exusiaiwei/agora"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "l10n": "./l10n",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agora",
+          "title": "%agora.viewContainer.title%",
+          "icon": "media/agora.svg"
+        }
+      ]
+    },
+    "views": {
+      "agora": [
+        {
+          "id": "agora.discussions",
+          "name": "%agora.view.discussions%",
+          "type": "tree",
+          "icon": "media/agora.svg",
+          "contextualTitle": "%agora.viewContainer.title%"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "agora.discussions",
+        "contents": "%agora.welcome.signedOut%",
+        "when": "!agora.signedIn"
+      },
+      {
+        "view": "agora.discussions",
+        "contents": "%agora.welcome.noRepo%",
+        "when": "agora.signedIn && !agora.hasRepo"
+      }
+    ],
+    "commands": [
+      {
+        "command": "agora.signIn",
+        "title": "%agora.command.signIn%",
+        "category": "Agora"
+      },
+      {
+        "command": "agora.signOut",
+        "title": "%agora.command.signOut%",
+        "category": "Agora"
+      },
+      {
+        "command": "agora.refresh",
+        "title": "%agora.command.refresh%",
+        "category": "Agora",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "agora.openHome",
+        "title": "%agora.command.openHome%",
+        "category": "Agora",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "agora.openDiscussion",
+        "title": "%agora.command.openDiscussion%",
+        "category": "Agora"
+      },
+      {
+        "command": "agora.openInBrowser",
+        "title": "%agora.command.openInBrowser%",
+        "category": "Agora",
+        "icon": "$(link-external)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "agora.openHome",
+          "when": "view == agora.discussions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "agora.refresh",
+          "when": "view == agora.discussions",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "agora.openInBrowser",
+          "when": "view == agora.discussions && viewItem == discussion",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Agora",
+      "properties": {
+        "agora.repository": {
+          "type": "string",
+          "default": "",
+          "description": "%agora.config.repository%",
+          "scope": "window"
+        },
+        "agora.pageSize": {
+          "type": "number",
+          "default": 25,
+          "minimum": 5,
+          "maximum": 100,
+          "description": "%agora.config.pageSize%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build:extension": "node esbuild.config.mjs",
+    "build:webview": "vite build",
+    "build": "npm run build:extension && npm run build:webview",
+    "dev:extension": "node esbuild.config.mjs --watch",
+    "dev:webview": "vite build --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/webview/tsconfig.json --noEmit",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "@octokit/graphql": "^8.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.90.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "clsx": "^2.1.1",
+    "esbuild": "^0.24.0",
+    "postcss": "^8.4.45",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.0",
+    "tailwind-merge": "^2.5.2",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.6"
+  }
+}

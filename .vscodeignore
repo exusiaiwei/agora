@@ -1,0 +1,10 @@
+.vscode/**
+.git/**
+.gitignore
+node_modules/**
+src/**
+*.config.*
+tsconfig*.json
+package.nls.*.json
+!package.nls.json
+.eslintcache

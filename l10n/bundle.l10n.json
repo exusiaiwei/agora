@@ -1,0 +1,13 @@
+{
+  "Sign in failed: {0}": "Sign in failed: {0}",
+  "Could not detect a GitHub repository in this workspace.": "Could not detect a GitHub repository in this workspace.",
+  "Loading discussions…": "Loading discussions…",
+  "No discussions yet.": "No discussions yet.",
+  "All categories": "All categories",
+  "Reply": "Reply",
+  "Replies": "Replies",
+  "Answer": "Answer",
+  "Marked as answer": "Marked as answer",
+  "Open in browser": "Open in browser",
+  "Refresh": "Refresh"
+}
