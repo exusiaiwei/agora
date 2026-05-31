@@ -195,7 +195,16 @@ function AppBody({
   if (!state.repo) {
     return (
       <Layout>
-        <EmptyState icon="repo" title={strings.noRepoDetected} hint={strings.noRepoHint} />
+        <EmptyState
+          icon="repo"
+          title={strings.noRepoDetected}
+          hint={strings.noRepoHint}
+          action={
+            <Button icon="refresh" onClick={() => rpc({ kind: 'redetectRepo' })}>
+              {strings.refresh}
+            </Button>
+          }
+        />
       </Layout>
     );
   }

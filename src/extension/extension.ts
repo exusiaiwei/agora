@@ -65,7 +65,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('agora.signOut', async () => {
       await auth.signOut();
     }),
-    vscode.commands.registerCommand('agora.refresh', () => {
+    vscode.commands.registerCommand('agora.refresh', async () => {
+      await repoDetector.refresh();
       tree.refresh();
     }),
     vscode.commands.registerCommand('agora.openHome', () => {

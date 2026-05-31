@@ -189,6 +189,11 @@ export class AgoraPanel {
         await this.deps.auth.signIn();
         return { ok: true };
       }
+      case 'redetectRepo': {
+        await this.deps.repoDetector.refresh();
+        this.sendContext();
+        return { ok: true };
+      }
     }
   }
 

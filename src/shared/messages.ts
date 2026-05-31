@@ -15,7 +15,8 @@ export type WebviewRequest =
   | { kind: 'listDiscussions'; categoryId: string | null; cursor: string | null }
   | { kind: 'getDiscussion'; number: number }
   | { kind: 'openInBrowser'; url: string }
-  | { kind: 'signIn' };
+  | { kind: 'signIn' }
+  | { kind: 'redetectRepo' };
 
 export interface WebviewRpcMessage {
   type: 'rpc';
@@ -46,6 +47,7 @@ export type HostRpcResult<R extends WebviewRequest> =
   R extends { kind: 'ready' } ? { ok: true } :
   R extends { kind: 'openInBrowser' } ? { ok: true } :
   R extends { kind: 'signIn' } ? { ok: true } :
+  R extends { kind: 'redetectRepo' } ? { ok: true } :
   never;
 
 export interface HostRpcResponseSuccess {

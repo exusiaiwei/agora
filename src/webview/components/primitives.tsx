@@ -145,16 +145,19 @@ export function EmptyState({
   icon,
   title,
   hint,
+  action,
 }: {
   icon: string;
   title: string;
   hint?: string;
+  action?: React.ReactNode;
 }): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center text-center py-10 px-6 text-muted ag-fade-in">
       <span className={`codicon codicon-${icon} text-2xl mb-3 opacity-60`} aria-hidden="true" />
       <div className="text-md text-fg/80">{title}</div>
       {hint && <div className="text-sm mt-1">{hint}</div>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

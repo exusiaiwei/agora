@@ -5,6 +5,8 @@ interface GitExtension {
   getAPI(version: 1): GitAPI;
 }
 
+const logger = vscode.window.createOutputChannel('Agora');
+
 interface GitAPI {
   repositories: GitRepository[];
   onDidOpenRepository: vscode.Event<GitRepository>;
@@ -24,9 +26,13 @@ interface GitRepository {
 }
 
 const GITHUB_PATTERNS = [
-  /^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i,
-  /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i,
-  /^ssh:\/\/git@github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/i,
+  // https://github.com/owner/name(.git)
+  /^https?:\/\/(?:[^@/]+@)?github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i,
+  // git@github.com:owner/name(.git) — also matches SSH config aliases
+  // like `git@github-personal:owner/name.git`.
+  /^git@(?:[a-z0-9_.-]*github[a-z0-9_.-]*):([^/]+)\/([^/]+?)(?:\.git)?$/i,
+  // ssh://git@github.com/owner/name(.git)
+  /^ssh:\/\/git@(?:[a-z0-9_.-]*github[a-z0-9_.-]*)\/([^/]+)\/([^/]+?)(?:\.git)?$/i,
 ];
 
 export function parseGitHubRemote(url: string): Repository | null {
@@ -76,13 +82,24 @@ export class RepositoryDetector implements vscode.Disposable {
       if (ext) {
         const exports = ext.isActive ? ext.exports : await ext.activate();
         this.gitApi = exports.getAPI(1);
-        this.disposables.push(
-          this.gitApi.onDidOpenRepository(() => this.refresh()),
-          this.gitApi.onDidCloseRepository(() => this.refresh()),
-        );
+
+        const watchRepo = (repo: GitRepository): void => {
+          this.disposables.push(repo.state.onDidChange(() => void this.refresh()));
+        };
         for (const repo of this.gitApi.repositories) {
-          this.disposables.push(repo.state.onDidChange(() => this.refresh()));
+          watchRepo(repo);
         }
+        this.disposables.push(
+          // When VS Code's git extension discovers a new repository (often
+          // *after* we've finished activating), wire up the same state
+          // listener — `remotes` is populated asynchronously, so the first
+          // `onDidOpenRepository` fires before remotes are available.
+          this.gitApi.onDidOpenRepository((repo) => {
+            watchRepo(repo);
+            void this.refresh();
+          }),
+          this.gitApi.onDidCloseRepository(() => void this.refresh()),
+        );
       }
     } catch {
       // Git extension is optional.
@@ -103,19 +120,41 @@ export class RepositoryDetector implements vscode.Disposable {
   }
 
   private detectFromGit(): Repository | null {
-    if (!this.gitApi) return null;
-    for (const repo of this.gitApi.repositories) {
+    if (!this.gitApi) {
+      logger.appendLine('[detect] git extension API not available');
+      return null;
+    }
+    const repos = this.gitApi.repositories;
+    if (repos.length === 0) {
+      logger.appendLine('[detect] git extension has no repositories yet (will retry on open)');
+      return null;
+    }
+    for (const repo of repos) {
       const remotes = repo.state.remotes;
       const ordered = [
         ...remotes.filter((r) => r.name === 'origin'),
         ...remotes.filter((r) => r.name === 'upstream'),
         ...remotes.filter((r) => r.name !== 'origin' && r.name !== 'upstream'),
       ];
+      if (ordered.length === 0) {
+        logger.appendLine(
+          `[detect] repo ${repo.rootUri.fsPath} has no remotes yet`,
+        );
+        continue;
+      }
       for (const remote of ordered) {
         const url = remote.fetchUrl ?? remote.pushUrl;
         if (!url) continue;
         const parsed = parseGitHubRemote(url);
-        if (parsed) return parsed;
+        if (parsed) {
+          logger.appendLine(
+            `[detect] matched ${remote.name} ${url} → ${parsed.owner}/${parsed.name}`,
+          );
+          return parsed;
+        }
+        logger.appendLine(
+          `[detect] remote ${remote.name} ${url} did not match GitHub patterns`,
+        );
       }
     }
     return null;
