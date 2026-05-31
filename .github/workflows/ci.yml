@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['v*']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build & package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build extension + webview
+        run: npm run build
+
+      - name: Package VSIX
+        run: npm run package
+
+      - name: Stamp build info
+        id: stamp
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            REF_NAME="pr-${{ github.event.pull_request.number }}"
+          else
+            REF_NAME="${GITHUB_REF_NAME//\//-}"
+          fi
+          ARTIFACT_NAME="agora-${REF_NAME}-${SHORT_SHA}"
+          mv agora.vsix "${ARTIFACT_NAME}.vsix"
+          echo "artifact_name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
+          echo "vsix_path=${ARTIFACT_NAME}.vsix" >> "$GITHUB_OUTPUT"
+
+      - name: Upload VSIX artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stamp.outputs.artifact_name }}
+          path: ${{ steps.stamp.outputs.vsix_path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Comment on PR with install instructions
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifactName = '${{ steps.stamp.outputs.artifact_name }}';
+            const runId = context.runId;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request.number;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const marker = '<!-- agora-vsix-preview -->';
+
+            const body = [
+              marker,
+              `### 📦 Preview build ready`,
+              ``,
+              `Artifact: **\`${artifactName}.vsix\`** ([download from this run](${runUrl}#artifacts))`,
+              `Commit: \`${context.sha.substring(0, 7)}\``,
+              ``,
+              `**Install in VS Code:**`,
+              `1. Download the artifact and unzip → you'll get \`${artifactName}.vsix\``,
+              `2. \`Cmd/Ctrl+Shift+P\` → **Extensions: Install from VSIX…** → pick it`,
+              `3. Reload window`,
+              ``,
+              `_Updated automatically on every push to this PR._`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber, body,
+              });
+            }
