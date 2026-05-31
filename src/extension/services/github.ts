@@ -7,6 +7,7 @@ import type {
   DiscussionListPage,
   DiscussionSummary,
   ReactionContent,
+  ReactionGroup,
   Repository,
   ViewerInfo,
 } from '../../shared/types';
@@ -107,6 +108,7 @@ export class GitHubService {
       viewerCanUpdate: d.viewerCanUpdate,
       viewerCanDelete: d.viewerCanDelete,
       viewerCanReact: d.viewerCanReact,
+      reactionGroups: mapReactionGroups(d.reactionGroups),
       comments,
     };
   }
@@ -309,9 +311,26 @@ function mapComment(c: RawComment): CommentNode {
     viewerCanDelete: c.viewerCanDelete,
     viewerCanMarkAsAnswer: c.viewerCanMarkAsAnswer,
     viewerCanUnmarkAsAnswer: c.viewerCanUnmarkAsAnswer,
+    viewerCanReact: c.viewerCanReact,
+    reactionGroups: mapReactionGroups(c.reactionGroups),
     replies: (c.replies?.nodes ?? []).map((r) => mapComment(r)),
     replyCount: c.replies?.totalCount ?? 0,
   };
+}
+
+function mapReactionGroups(raw: RawReactionGroup[] | undefined): ReactionGroup[] {
+  if (!raw) return [];
+  return raw.map((g) => ({
+    content: g.content,
+    viewerHasReacted: g.viewerHasReacted,
+    count: g.reactors?.totalCount ?? 0,
+  }));
+}
+
+interface RawReactionGroup {
+  content: ReactionContent;
+  viewerHasReacted: boolean;
+  reactors?: { totalCount: number };
 }
 
 interface RawAuthor {
@@ -360,6 +379,8 @@ interface RawComment {
   databaseId: number | null;
   body: string;
   bodyHTML: string;
+  viewerCanReact: boolean;
+  reactionGroups?: RawReactionGroup[];
   createdAt: string;
   updatedAt: string;
   author: RawAuthor | null;
@@ -392,6 +413,7 @@ interface GetDiscussionResponse {
       viewerCanUpdate: boolean;
       viewerCanDelete: boolean;
       viewerCanReact: boolean;
+      reactionGroups?: RawReactionGroup[];
       comments: { totalCount: number; nodes: RawComment[] };
     };
   };
@@ -469,6 +491,12 @@ const COMMENT_FRAGMENT = /* GraphQL */ `
     viewerCanDelete
     viewerCanMarkAsAnswer
     viewerCanUnmarkAsAnswer
+    viewerCanReact
+    reactionGroups {
+      content
+      viewerHasReacted
+      reactors { totalCount }
+    }
     author { login avatarUrl url }
   }
 `;
@@ -517,6 +545,11 @@ const GET_DISCUSSION_QUERY = /* GraphQL */ `
         viewerCanUpdate
         viewerCanDelete
         viewerCanReact
+        reactionGroups {
+          content
+          viewerHasReacted
+          reactors { totalCount }
+        }
         comments(first: 50) {
           totalCount
           nodes {
