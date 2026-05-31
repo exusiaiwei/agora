@@ -89,20 +89,23 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
             <Markdown source={d.bodyText} />
           </div>
 
-          <div className="mt-6 flex items-center gap-3 text-sm text-muted">
+          <div className="mt-6 flex items-center gap-2 text-sm text-muted">
             <button
               type="button"
               className={cn(
-                'inline-flex items-center gap-1 px-2 h-[26px] rounded border border-[var(--vscode-widget-border,var(--vscode-panel-border))]',
+                'inline-flex items-center gap-1.5 px-2.5 h-[26px] rounded border border-[var(--vscode-widget-border,var(--vscode-panel-border))]',
                 'transition-colors duration-100 hover:bg-hover',
                 d.viewerHasUpvoted && 'text-accent border-accent/40',
               )}
+              title={`${d.upvoteCount} upvotes`}
             >
               <span className="codicon codicon-triangle-up" aria-hidden="true" />
               <span className="tabular-nums">{d.upvoteCount}</span>
             </button>
-            <span className="opacity-40">·</span>
-            <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 h-[26px]"
+              title={strings.commentCount(d.commentCount)}
+            >
               <span className="codicon codicon-comment" aria-hidden="true" />
               <span className="tabular-nums">{d.commentCount}</span>
             </span>

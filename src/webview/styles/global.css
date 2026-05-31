@@ -59,13 +59,13 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────
-   Codicon font shim — VS Code injects the font into the
-   webview iframe so we can use codicon classes directly.
+   Codicons: real font is loaded via `@vscode/codicons` in
+   main.tsx. We only tweak alignment + default sizing so the
+   glyphs match the surrounding body text.
    ───────────────────────────────────────────────────────── */
 .codicon {
-  font-family: 'codicon', monospace;
-  font-size: 14px;
-  line-height: 1;
+  font-size: 14px !important;
+  line-height: 1 !important;
   display: inline-block;
   vertical-align: text-bottom;
 }

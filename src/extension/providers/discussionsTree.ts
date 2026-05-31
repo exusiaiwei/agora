@@ -84,9 +84,11 @@ export class DiscussionsTreeProvider
         const d = node.discussion;
         const item = new vscode.TreeItem(d.title, vscode.TreeItemCollapsibleState.None);
         item.id = `discussion:${d.id}`;
-        item.description = `#${d.number} · ${d.commentCount}`;
+        // Leaf rows intentionally have no iconPath: the tree's indent
+        // guide already sits in the icon column, and a codicon there
+        // visually collides with the guide line.
+        item.description = describeDiscussion(d);
         item.contextValue = 'discussion';
-        item.iconPath = iconFor(d);
         item.tooltip = new vscode.MarkdownString(
           `**${escapeMarkdown(d.title)}** \`#${d.number}\`\n\n` +
             `${d.author ? `@${d.author.login} · ` : ''}${relativeTime(d.updatedAt)}\n\n` +
@@ -226,13 +228,14 @@ export class DiscussionsTreeProvider
   }
 }
 
-function iconFor(d: DiscussionSummary): vscode.ThemeIcon {
-  if (d.answered) {
-    return new vscode.ThemeIcon('pass-filled', new vscode.ThemeColor('testing.iconPassed'));
-  }
-  if (d.locked) return new vscode.ThemeIcon('lock');
-  if (d.closed) return new vscode.ThemeIcon('check');
-  return new vscode.ThemeIcon('comment-discussion');
+function describeDiscussion(d: DiscussionSummary): string {
+  const parts: string[] = [];
+  if (d.answered) parts.push('✓');
+  else if (d.locked) parts.push('🔒');
+  else if (d.closed) parts.push('—');
+  parts.push(`#${d.number}`);
+  if (d.commentCount > 0) parts.push(`💬 ${d.commentCount}`);
+  return parts.join(' · ');
 }
 
 function relativeTime(iso: string): string {

@@ -141,7 +141,8 @@
     "vscode:prepublish": "npm run build"
   },
   "dependencies": {
-    "@octokit/graphql": "^8.1.1"
+    "@octokit/graphql": "^8.1.1",
+    "@vscode/codicons": "^0.0.45"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
