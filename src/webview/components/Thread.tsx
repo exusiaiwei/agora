@@ -21,6 +21,50 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
   const strings = useStrings();
   const answer = d.comments.find((c) => c.isAnswer);
   const others = d.comments.filter((c) => !c.isAnswer);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(d.title);
+
+  const discussionMenu = useMemo<DropdownMenuItem[]>(() => {
+    const items: DropdownMenuItem[] = [];
+    if (d.viewerCanUpdate) {
+      items.push({
+        icon: 'edit',
+        label: strings.edit,
+        onSelect: () => {
+          setEditTitle(d.title);
+          setEditing(true);
+        },
+      });
+      items.push({
+        icon: d.locked ? 'unlock' : 'lock',
+        label: d.locked ? strings.unlockDiscussion : strings.lockDiscussion,
+        onSelect: async () => {
+          if (d.locked) await rpc({ kind: 'unlockDiscussion', discussionId: d.id });
+          else await rpc({ kind: 'lockDiscussion', discussionId: d.id });
+          onChange();
+        },
+      });
+    }
+    if (d.viewerCanDelete) {
+      items.push({
+        icon: 'trash',
+        label: strings.delete,
+        destructive: true,
+        onSelect: async () => {
+          const { confirmed } = await rpc({
+            kind: 'confirm',
+            message: strings.deleteDiscussionConfirm,
+            confirmLabel: strings.delete,
+            destructive: true,
+          });
+          if (!confirmed) return;
+          await rpc({ kind: 'deleteDiscussion', discussionId: d.id });
+          onBack();
+        },
+      });
+    }
+    return items;
+  }, [d, strings, onChange, onBack]);
 
   return (
     <div className="ag-fade-in flex flex-col h-full">
@@ -57,7 +101,24 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[var(--ag-content-max)] mx-auto px-6 py-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-fg">{d.title}</h1>
+          {editing ? (
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className={cn(
+                'block w-full px-3 h-[40px] rounded-md text-xl font-semibold tracking-tight',
+                'bg-input-bg text-input-fg placeholder:text-muted',
+                'border border-[var(--vscode-input-border,var(--vscode-widget-border,transparent))]',
+                'outline-none focus:border-[var(--vscode-focusBorder)]',
+              )}
+            />
+          ) : (
+            <div className="flex items-start gap-2">
+              <h1 className="flex-1 text-2xl font-semibold tracking-tight text-fg">{d.title}</h1>
+              <DropdownMenu items={discussionMenu} triggerLabel={strings.edit} />
+            </div>
+          )}
 
           <div className="mt-3 flex items-center gap-2 text-sm text-muted">
             {d.author && (
@@ -91,7 +152,27 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
           </div>
 
           <div className="mt-6">
-            <Markdown source={d.bodyText} />
+            {editing ? (
+              <Composer
+                draftKey={`discussion:${d.id}:edit`}
+                initialBody={d.bodyText}
+                submitLabel={strings.save}
+                cancellable
+                onCancel={() => setEditing(false)}
+                onSubmit={async (body) => {
+                  await rpc({
+                    kind: 'updateDiscussion',
+                    discussionId: d.id,
+                    title: editTitle.trim(),
+                    body,
+                  });
+                  setEditing(false);
+                  onChange();
+                }}
+              />
+            ) : (
+              <Markdown source={d.bodyText} />
+            )}
           </div>
 
           <div className="mt-6 flex items-center gap-2 text-sm text-muted">
