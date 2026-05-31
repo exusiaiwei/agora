@@ -8,7 +8,7 @@ on:
     branches: ['**']
 
 permissions:
-  contents: read
+  contents: write       # needed to publish per-branch preview releases
   pull-requests: write
 
 concurrency:
@@ -49,46 +49,73 @@ jobs:
           else
             REF_NAME="${GITHUB_REF_NAME//\//-}"
           fi
-          ARTIFACT_NAME="agora-${REF_NAME}-${SHORT_SHA}"
-          mv agora.vsix "${ARTIFACT_NAME}.vsix"
-          echo "artifact_name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
-          echo "vsix_path=${ARTIFACT_NAME}.vsix" >> "$GITHUB_OUTPUT"
+          # Stamped copy keeps a per-commit name for the Actions artifact
+          # (zip-wrapped), while the original `agora.vsix` is uploaded
+          # untouched to a per-ref GitHub Release for direct download.
+          STAMPED="agora-${REF_NAME}-${SHORT_SHA}.vsix"
+          cp agora.vsix "${STAMPED}"
+          echo "stamped_vsix=${STAMPED}" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=agora-${REF_NAME}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${REF_NAME}-preview" >> "$GITHUB_OUTPUT"
+          echo "release_name=${REF_NAME} preview build" >> "$GITHUB_OUTPUT"
 
-      - name: Upload VSIX artifact
-        id: upload
+      - name: Upload VSIX artifact (zip-wrapped fallback)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.stamp.outputs.artifact_name }}
-          path: ${{ steps.stamp.outputs.vsix_path }}
+          path: ${{ steps.stamp.outputs.stamped_vsix }}
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish / update preview release (direct .vsix download)
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.stamp.outputs.release_tag }}
+          name: ${{ steps.stamp.outputs.release_name }}
+          prerelease: true
+          # Overwriting on each push so the stable URL always points at
+          # the latest commit's build. GitHub Actions zips artifacts; a
+          # release asset is a plain file the user can click → install.
+          files: agora.vsix
+          body: |
+            Auto-built preview from commit `${{ github.sha }}`.
+
+            **[Direct download: agora.vsix](https://github.com/${{ github.repository }}/releases/download/${{ steps.stamp.outputs.release_tag }}/agora.vsix)**
+
+            Install in VS Code:
+            1. Save the file above
+            2. `Cmd/Ctrl+Shift+P` → **Extensions: Install from VSIX…**
+            3. Reload window
+          make_latest: false
 
       - name: Comment on PR with install instructions
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const artifactName = '${{ steps.stamp.outputs.artifact_name }}';
-            const runId = context.runId;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const prNumber = context.payload.pull_request.number;
-            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const tag = '${{ steps.stamp.outputs.release_tag }}';
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const directUrl = `https://github.com/${owner}/${repo}/releases/download/${tag}/agora.vsix`;
+            const releaseUrl = `https://github.com/${owner}/${repo}/releases/tag/${tag}`;
             const marker = '<!-- agora-vsix-preview -->';
 
             const body = [
               marker,
               `### 📦 Preview build ready`,
               ``,
-              `Artifact: **\`${artifactName}.vsix\`** ([download from this run](${runUrl}#artifacts))`,
-              `Commit: \`${context.sha.substring(0, 7)}\``,
+              `**[Download \`agora.vsix\`](${directUrl})** — direct file, no zip.`,
+              `Commit: \`${context.sha.substring(0, 7)}\` · [Release page](${releaseUrl}) · [Actions run](${runUrl})`,
               ``,
               `**Install in VS Code:**`,
-              `1. Download the artifact and unzip → you'll get \`${artifactName}.vsix\``,
+              `1. Click the link above — it downloads as \`agora.vsix\``,
               `2. \`Cmd/Ctrl+Shift+P\` → **Extensions: Install from VSIX…** → pick it`,
               `3. Reload window`,
               ``,
-              `_Updated automatically on every push to this PR._`,
+              `_The same URL stays valid; updated automatically on every push to this PR._`,
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
