@@ -44,5 +44,8 @@ export function buildWebviewStrings(): WebviewStringsDTO {
     deleteConfirm: vscode.l10n.t('Delete this comment? This cannot be undone.'),
     deleteDiscussionConfirm: vscode.l10n.t('Delete this discussion and all its comments? This cannot be undone.'),
     addReaction: vscode.l10n.t('Add reaction'),
+    repliesClosedNotice: vscode.l10n.t(
+      'This discussion is locked — replies are closed.',
+    ),
   };
 }

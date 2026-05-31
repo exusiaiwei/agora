@@ -1,25 +1,30 @@
+import { useState } from 'react';
 import type { CommentNode, DiscussionDetail } from '@shared/types';
 import { Avatar, Badge, IconButton } from './primitives';
 import { Markdown } from './Markdown';
+import { Composer } from './Composer';
 import { relativeTime, absoluteTime } from '../lib/time';
 import { cn } from '../lib/cn';
 import { useStrings } from '../lib/strings';
+import { rpc } from '../lib/vscode';
 import type { WebviewStrings } from '@shared/strings';
 
 interface ThreadProps {
   discussion: DiscussionDetail;
   onBack: () => void;
   onOpenInBrowser: (url: string) => void;
+  /** Called after any successful mutation so the parent can refresh state. */
+  onChange: () => void;
 }
 
-export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps): JSX.Element {
+export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: ThreadProps): JSX.Element {
   const strings = useStrings();
   const answer = d.comments.find((c) => c.isAnswer);
   const others = d.comments.filter((c) => !c.isAnswer);
 
   return (
     <div className="ag-fade-in flex flex-col h-full">
-      <header className="sticky top-0 z-10 backdrop-blur-sm bg-[color-mix(in_srgb,var(--vscode-editor-background)_92%,transparent)] border-b border-[var(--vscode-widget-border,var(--vscode-panel-border))]">
+      <header className="sticky top-0 z-10 backdrop-blur-sm bg-[color-mix(in_srgb,var(--vscode-sideBar-background)_92%,transparent)] border-b border-[var(--vscode-widget-border,var(--vscode-panel-border))]">
         <div className="max-w-[var(--ag-content-max)] mx-auto px-6 py-3 flex items-center gap-2">
           <IconButton icon="arrow-left" label={strings.back} onClick={onBack} />
           <div className="flex-1 min-w-0">
@@ -119,7 +124,13 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
                 <span className="codicon codicon-pass-filled" aria-hidden="true" />
                 {strings.markedAsAnswer}
               </div>
-              <Comment node={answer} highlight strings={strings} />
+              <Comment
+                node={answer}
+                discussion={d}
+                highlight
+                strings={strings}
+                onChange={onChange}
+              />
             </section>
           )}
 
@@ -130,10 +141,28 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
             <ul className="flex flex-col gap-6">
               {others.map((c) => (
                 <li key={c.id}>
-                  <Comment node={c} strings={strings} />
+                  <Comment node={c} discussion={d} strings={strings} onChange={onChange} />
                 </li>
               ))}
             </ul>
+
+            {d.locked ? (
+              <div className="mt-6 px-4 py-3 rounded-md border border-[var(--vscode-widget-border,var(--vscode-panel-border))] text-sm text-muted flex items-center gap-2">
+                <span className="codicon codicon-lock" aria-hidden="true" />
+                {strings.repliesClosedNotice}
+              </div>
+            ) : (
+              <div className="mt-6">
+                <Composer
+                  draftKey={`discussion:${d.id}:reply`}
+                  placeholder={strings.composerPlaceholder}
+                  onSubmit={async (body) => {
+                    await rpc({ kind: 'addComment', discussionId: d.id, body });
+                    onChange();
+                  }}
+                />
+              </div>
+            )}
           </section>
         </div>
       </div>
@@ -143,13 +172,19 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
 
 function Comment({
   node,
+  discussion,
   highlight,
   strings,
+  onChange,
 }: {
   node: CommentNode;
+  discussion: DiscussionDetail;
   highlight?: boolean;
   strings: WebviewStrings;
+  onChange: () => void;
 }): JSX.Element {
+  const [replying, setReplying] = useState(false);
+
   return (
     <article
       className={cn(
@@ -185,7 +220,7 @@ function Comment({
 
       <Markdown source={node.bodyText} />
 
-      {node.replies.length > 0 && (
+      {(node.replies.length > 0 || replying) && (
         <div className="mt-4 pl-4 border-l-2 border-[var(--vscode-widget-border,var(--vscode-panel-border))] flex flex-col gap-4">
           {node.replies.map((r) => (
             <article key={r.id}>
@@ -202,6 +237,40 @@ function Comment({
               <Markdown source={r.bodyText} />
             </article>
           ))}
+
+          {replying && (
+            <Composer
+              draftKey={`discussion:${discussion.id}:reply-to:${node.id}`}
+              compact
+              cancellable
+              placeholder={strings.composerPlaceholder}
+              submitLabel={strings.reply}
+              onCancel={() => setReplying(false)}
+              onSubmit={async (body) => {
+                await rpc({
+                  kind: 'addComment',
+                  discussionId: discussion.id,
+                  body,
+                  replyToId: node.id,
+                });
+                setReplying(false);
+                onChange();
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {!discussion.locked && !replying && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setReplying(true)}
+            className="inline-flex items-center gap-1 h-[24px] px-2 rounded text-xs text-fg/70 hover:text-fg hover:bg-hover transition-colors duration-100"
+          >
+            <span className="codicon codicon-reply" aria-hidden="true" />
+            {strings.reply}
+          </button>
         </div>
       )}
     </article>

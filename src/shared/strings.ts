@@ -56,6 +56,8 @@ export interface WebviewStringsDTO {
   deleteDiscussionConfirm: string;
   // Reactions
   addReaction: string;
+  // Locked thread notice
+  repliesClosedNotice: string;
 }
 
 export function inflate(dto: WebviewStringsDTO): WebviewStrings {

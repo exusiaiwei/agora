@@ -54,5 +54,6 @@
   "Unlock discussion": "解锁讨论",
   "Delete this comment? This cannot be undone.": "确定删除这条评论？此操作不可撤销。",
   "Delete this discussion and all its comments? This cannot be undone.": "确定删除这条讨论及其所有评论？此操作不可撤销。",
-  "Add reaction": "添加反应"
+  "Add reaction": "添加反应",
+  "This discussion is locked — replies are closed.": "该讨论已锁定，无法回复。"
 }
