@@ -159,6 +159,15 @@ export class AgoraPanel {
         this.navigate({ kind: 'navigate', to: { view: 'compose' } });
         return { ok: true };
       }
+      case 'confirm': {
+        const label = req.confirmLabel ?? vscode.l10n.t('Confirm');
+        const choice = await vscode.window.showWarningMessage(
+          req.message,
+          { modal: true },
+          label,
+        );
+        return { confirmed: choice === label };
+      }
       default:
         if (isWriteRpc(req)) {
           return dispatchWriteRpc(req, this.deps);

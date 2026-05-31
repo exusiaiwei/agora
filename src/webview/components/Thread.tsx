@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { CommentNode, DiscussionDetail } from '@shared/types';
-import { Avatar, Badge, IconButton } from './primitives';
+import { Avatar, Badge, DropdownMenu, type DropdownMenuItem, IconButton } from './primitives';
 import { Markdown } from './Markdown';
 import { Composer } from './Composer';
 import { relativeTime, absoluteTime } from '../lib/time';
@@ -184,6 +184,57 @@ function Comment({
   onChange: () => void;
 }): JSX.Element {
   const [replying, setReplying] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const menuItems = useMemo<DropdownMenuItem[]>(() => {
+    const items: DropdownMenuItem[] = [];
+    if (node.viewerCanMarkAsAnswer) {
+      items.push({
+        icon: 'pass-filled',
+        label: strings.markAsAnswer,
+        onSelect: async () => {
+          await rpc({ kind: 'markAnswer', commentId: node.id });
+          onChange();
+        },
+      });
+    }
+    if (node.viewerCanUnmarkAsAnswer) {
+      items.push({
+        icon: 'circle-slash',
+        label: strings.unmarkAsAnswer,
+        onSelect: async () => {
+          await rpc({ kind: 'unmarkAnswer', commentId: node.id });
+          onChange();
+        },
+      });
+    }
+    if (node.viewerCanUpdate) {
+      items.push({
+        icon: 'edit',
+        label: strings.edit,
+        onSelect: () => setEditing(true),
+      });
+    }
+    if (node.viewerCanDelete) {
+      items.push({
+        icon: 'trash',
+        label: strings.delete,
+        destructive: true,
+        onSelect: async () => {
+          const { confirmed } = await rpc({
+            kind: 'confirm',
+            message: strings.deleteConfirm,
+            confirmLabel: strings.delete,
+            destructive: true,
+          });
+          if (!confirmed) return;
+          await rpc({ kind: 'deleteComment', commentId: node.id });
+          onChange();
+        },
+      });
+    }
+    return items;
+  }, [node, strings, onChange]);
 
   return (
     <article
@@ -211,31 +262,35 @@ function Comment({
         )}
         <div className="flex-1" />
         {node.upvoteCount > 0 && (
-          <span className="inline-flex items-center gap-1 text-xs text-muted tabular-nums">
+          <span className="inline-flex items-center gap-1 text-xs text-muted tabular-nums mr-1">
             <span className="codicon codicon-triangle-up" aria-hidden="true" />
             {node.upvoteCount}
           </span>
         )}
+        <DropdownMenu items={menuItems} triggerLabel={strings.edit} />
       </header>
 
-      <Markdown source={node.bodyText} />
+      {editing ? (
+        <Composer
+          draftKey={`comment:${node.id}:edit`}
+          initialBody={node.bodyText}
+          submitLabel={strings.save}
+          cancellable
+          onCancel={() => setEditing(false)}
+          onSubmit={async (body) => {
+            await rpc({ kind: 'updateComment', commentId: node.id, body });
+            setEditing(false);
+            onChange();
+          }}
+        />
+      ) : (
+        <Markdown source={node.bodyText} />
+      )}
 
       {(node.replies.length > 0 || replying) && (
         <div className="mt-4 pl-4 border-l-2 border-[var(--vscode-widget-border,var(--vscode-panel-border))] flex flex-col gap-4">
           {node.replies.map((r) => (
-            <article key={r.id}>
-              <header className="flex items-center gap-2 mb-1.5">
-                {r.author && <Avatar src={r.author.avatarUrl} alt={r.author.login} size={18} />}
-                <span className="text-sm text-fg/90 font-medium">
-                  {r.author?.login ?? 'ghost'}
-                </span>
-                <span className="text-xs text-muted opacity-50">·</span>
-                <span className="text-xs text-muted" title={absoluteTime(r.createdAt)}>
-                  {relativeTime(r.createdAt)}
-                </span>
-              </header>
-              <Markdown source={r.bodyText} />
-            </article>
+            <Reply key={r.id} node={r} strings={strings} onChange={onChange} />
           ))}
 
           {replying && (
@@ -272,6 +327,75 @@ function Comment({
             {strings.reply}
           </button>
         </div>
+      )}
+    </article>
+  );
+}
+
+function Reply({
+  node,
+  strings,
+  onChange,
+}: {
+  node: CommentNode;
+  strings: WebviewStrings;
+  onChange: () => void;
+}): JSX.Element {
+  const [editing, setEditing] = useState(false);
+  const menuItems = useMemo<DropdownMenuItem[]>(() => {
+    const items: DropdownMenuItem[] = [];
+    if (node.viewerCanUpdate) {
+      items.push({ icon: 'edit', label: strings.edit, onSelect: () => setEditing(true) });
+    }
+    if (node.viewerCanDelete) {
+      items.push({
+        icon: 'trash',
+        label: strings.delete,
+        destructive: true,
+        onSelect: async () => {
+          const { confirmed } = await rpc({
+            kind: 'confirm',
+            message: strings.deleteConfirm,
+            confirmLabel: strings.delete,
+            destructive: true,
+          });
+          if (!confirmed) return;
+          await rpc({ kind: 'deleteComment', commentId: node.id });
+          onChange();
+        },
+      });
+    }
+    return items;
+  }, [node, strings, onChange]);
+
+  return (
+    <article>
+      <header className="flex items-center gap-2 mb-1.5">
+        {node.author && <Avatar src={node.author.avatarUrl} alt={node.author.login} size={18} />}
+        <span className="text-sm text-fg/90 font-medium">{node.author?.login ?? 'ghost'}</span>
+        <span className="text-xs text-muted opacity-50">·</span>
+        <span className="text-xs text-muted" title={absoluteTime(node.createdAt)}>
+          {relativeTime(node.createdAt)}
+        </span>
+        <div className="flex-1" />
+        <DropdownMenu items={menuItems} triggerLabel={strings.edit} />
+      </header>
+      {editing ? (
+        <Composer
+          draftKey={`comment:${node.id}:edit`}
+          initialBody={node.bodyText}
+          submitLabel={strings.save}
+          cancellable
+          compact
+          onCancel={() => setEditing(false)}
+          onSubmit={async (body) => {
+            await rpc({ kind: 'updateComment', commentId: node.id, body });
+            setEditing(false);
+            onChange();
+          }}
+        />
+      ) : (
+        <Markdown source={node.bodyText} />
       )}
     </article>
   );

@@ -20,6 +20,7 @@ export type WebviewRequest =
   | { kind: 'signIn' }
   | { kind: 'redetectRepo' }
   | { kind: 'openCompose' }
+  | { kind: 'confirm'; message: string; confirmLabel?: string; destructive?: boolean }
   // ── Writes ─────────────────────────────────────────────────
   | { kind: 'addDiscussion'; categoryId: string; title: string; body: string }
   | { kind: 'updateDiscussion'; discussionId: string; title?: string; body?: string; categoryId?: string }
@@ -71,6 +72,7 @@ export type HostRpcResult<R extends WebviewRequest> =
   R extends { kind: 'signIn' } ? { ok: true } :
   R extends { kind: 'redetectRepo' } ? { ok: true } :
   R extends { kind: 'openCompose' } ? { ok: true } :
+  R extends { kind: 'confirm' } ? { confirmed: boolean } :
   R extends { kind: 'addDiscussion' } ? { number: number; url: string } :
   R extends { kind: 'updateDiscussion' } ? { ok: true } :
   R extends { kind: 'deleteDiscussion' } ? { ok: true } :
