@@ -12,7 +12,7 @@ import type {
 } from '../../shared/messages';
 import type { Repository, ViewerInfo } from '../../shared/types';
 
-interface PanelDeps {
+interface SidebarDeps {
   context: vscode.ExtensionContext;
   github: GitHubService;
   repoDetector: RepositoryDetector;
@@ -20,57 +20,43 @@ interface PanelDeps {
   viewer: () => ViewerInfo | null;
 }
 
-export class AgoraPanel {
-  private static current: AgoraPanel | null = null;
+/**
+ * The sidebar view replaces what was a TreeDataProvider so we can fully
+ * control spacing, fonts, hover affordances and (eventually) inline
+ * actions — VS Code's TreeView doesn't expose enough layout control to
+ * match the Claude Code / Copilot Chat density (see vscode#28974,
+ * #110092, #66605: extensions cannot match the built-in Explorer's
+ * icon/indent layout).
+ */
+export class AgoraSidebarView implements vscode.WebviewViewProvider {
+  static readonly viewType = 'agora.discussions';
 
-  static reveal(deps: PanelDeps, initial?: HostEvent): AgoraPanel {
-    const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
-    if (AgoraPanel.current) {
-      AgoraPanel.current.panel.reveal(column);
-      if (initial) AgoraPanel.current.post({ type: 'event', event: initial });
-      return AgoraPanel.current;
-    }
-    AgoraPanel.current = new AgoraPanel(deps, initial);
-    return AgoraPanel.current;
-  }
-
-  private readonly panel: vscode.WebviewPanel;
+  private view: vscode.WebviewView | null = null;
   private readonly disposables: vscode.Disposable[] = [];
 
-  private constructor(private readonly deps: PanelDeps, initial?: HostEvent) {
-    this.panel = vscode.window.createWebviewPanel(
-      'agora.panel',
-      'Agora · Discussions',
-      vscode.ViewColumn.Active,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: localResourceRoots(deps.context),
-      },
-    );
-    this.panel.iconPath = {
-      light: vscode.Uri.joinPath(deps.context.extensionUri, 'media', 'agora.svg'),
-      dark: vscode.Uri.joinPath(deps.context.extensionUri, 'media', 'agora.svg'),
-    };
-    void this.setHtml().then(() => {
-      if (initial) this.post({ type: 'event', event: initial });
-    });
-
-    this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
-    this.panel.webview.onDidReceiveMessage(
-      (msg) => this.handleMessage(msg),
-      null,
-      this.disposables,
-    );
-
+  constructor(private readonly deps: SidebarDeps) {
     this.disposables.push(
       deps.repoDetector.onDidChange(() => this.sendContext()),
       deps.auth.onDidChange(() => this.sendContext()),
     );
   }
 
-  navigate(event: HostEvent): void {
-    this.post({ type: 'event', event });
+  async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
+    this.view = view;
+    view.webview.options = {
+      enableScripts: true,
+      localResourceRoots: localResourceRoots(this.deps.context),
+    };
+    view.webview.html = await loadWebviewHtml(
+      view.webview,
+      this.deps.context,
+      'sidebar',
+    );
+
+    view.onDidDispose(() => {
+      this.view = null;
+    });
+    view.webview.onDidReceiveMessage((raw) => this.handleMessage(raw));
   }
 
   private sendContext(): void {
@@ -88,15 +74,7 @@ export class AgoraPanel {
   }
 
   private post(message: HostMessage): void {
-    void this.panel.webview.postMessage(message);
-  }
-
-  private async setHtml(): Promise<void> {
-    this.panel.webview.html = await loadWebviewHtml(
-      this.panel.webview,
-      this.deps.context,
-      'panel',
-    );
+    if (this.view) void this.view.webview.postMessage(message);
   }
 
   private async handleMessage(raw: unknown): Promise<void> {
@@ -106,12 +84,7 @@ export class AgoraPanel {
 
     try {
       const result = await this.dispatch(msg);
-      this.sendResponse({
-        type: 'rpc-response',
-        requestId: msg.requestId,
-        ok: true,
-        result,
-      });
+      this.sendResponse({ type: 'rpc-response', requestId: msg.requestId, ok: true, result });
     } catch (err) {
       this.sendResponse({
         type: 'rpc-response',
@@ -138,8 +111,12 @@ export class AgoraPanel {
         });
       }
       case 'getDiscussion': {
-        const repo = this.requireRepo();
-        return this.deps.github.getDiscussion(repo, req.number);
+        // Clicking a discussion in the sidebar should open the full
+        // panel rather than try to render the thread in the narrow side
+        // view.
+        await vscode.commands.executeCommand('agora.openDiscussion', req.number);
+        // Return a minimal placeholder so the RPC envelope is happy.
+        return { ok: true };
       }
       case 'openInBrowser': {
         await vscode.env.openExternal(vscode.Uri.parse(req.url));
@@ -160,18 +137,18 @@ export class AgoraPanel {
   private requireRepo(): Repository {
     const repo = this.deps.repoDetector.current;
     if (!repo) {
-      throw new Error(vscode.l10n.t('Could not detect a GitHub repository in this workspace.'));
+      throw new Error(
+        vscode.l10n.t('Could not detect a GitHub repository in this workspace.'),
+      );
     }
     return repo;
   }
 
   private sendResponse(response: HostRpcResponse): void {
-    void this.panel.webview.postMessage(response);
+    if (this.view) void this.view.webview.postMessage(response);
   }
 
   dispose(): void {
-    AgoraPanel.current = null;
-    this.panel.dispose();
     this.disposables.forEach((d) => d.dispose());
   }
 }

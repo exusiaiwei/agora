@@ -35,7 +35,7 @@
         {
           "id": "agora.discussions",
           "name": "%agora.view.discussions%",
-          "type": "tree",
+          "type": "webview",
           "icon": "media/agora.svg",
           "contextualTitle": "%agora.viewContainer.title%"
         }
@@ -101,13 +101,7 @@
           "group": "navigation@2"
         }
       ],
-      "view/item/context": [
-        {
-          "command": "agora.openInBrowser",
-          "when": "view == agora.discussions && viewItem == discussion",
-          "group": "inline"
-        }
-      ]
+      "view/item/context": []
     },
     "configuration": {
       "title": "Agora",

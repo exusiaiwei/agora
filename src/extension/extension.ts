@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { AuthService } from './services/auth';
 import { GitHubService } from './services/github';
 import { RepositoryDetector } from './services/gitRemote';
-import { DiscussionsTreeProvider } from './providers/discussionsTree';
 import { AgoraPanel } from './webview/panel';
+import { AgoraSidebarView } from './webview/sidebarView';
 import type { ViewerInfo } from '../shared/types';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -14,10 +14,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(auth, repoDetector);
 
-  const tree = new DiscussionsTreeProvider(github, auth);
-  context.subscriptions.push(tree);
+  const deps = {
+    context,
+    github,
+    repoDetector,
+    auth,
+    viewer: () => viewer,
+  };
+
+  const sidebar = new AgoraSidebarView(deps);
+  context.subscriptions.push(sidebar);
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('agora.discussions', tree),
+    vscode.window.registerWebviewViewProvider(AgoraSidebarView.viewType, sidebar, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
   );
 
   const updateContext = async (): Promise<void> => {
@@ -34,8 +44,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       try {
         viewer = await github.getViewer();
       } catch (err) {
-        // Don't block activation on viewer fetch failures; surface as a
-        // log entry but keep operating with a null viewer.
         console.warn('[agora] viewer fetch failed:', err);
         viewer = null;
       }
@@ -43,20 +51,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       viewer = null;
     }
     await updateContext();
-    tree.refresh();
   };
 
   context.subscriptions.push(auth.onDidChange(() => void onAuthChanged()));
   context.subscriptions.push(
-    repoDetector.onDidChange((repo) => {
-      tree.setRepo(repo);
+    repoDetector.onDidChange(() => {
       void updateContext();
     }),
   );
 
   await auth.refresh({ silent: true });
   await onAuthChanged();
-  tree.setRepo(repoDetector.current);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('agora.signIn', async () => {
@@ -67,19 +72,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('agora.refresh', async () => {
       await repoDetector.refresh();
-      tree.refresh();
+      // Sidebar re-fetches on context change; here we also send a refresh
+      // event so any open panel re-runs its current view.
     }),
     vscode.commands.registerCommand('agora.openHome', () => {
-      AgoraPanel.reveal(
-        {
-          context,
-          auth,
-          github,
-          repoDetector,
-          viewer: () => viewer,
-        },
-        { kind: 'navigate', to: { view: 'list' } },
-      );
+      AgoraPanel.reveal(deps, { kind: 'navigate', to: { view: 'list' } });
     }),
     vscode.commands.registerCommand('agora.openDiscussion', (numberOrSummary: unknown) => {
       const number =
@@ -89,39 +86,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             ? numberOrSummary.number
             : NaN;
       if (Number.isNaN(number)) return;
-      AgoraPanel.reveal(
-        {
-          context,
-          auth,
-          github,
-          repoDetector,
-          viewer: () => viewer,
-        },
-        { kind: 'navigate', to: { view: 'discussion', number } },
-      );
+      AgoraPanel.reveal(deps, { kind: 'navigate', to: { view: 'discussion', number } });
     }),
     vscode.commands.registerCommand('agora.openInBrowser', (arg: unknown) => {
       const url =
-        typeof arg === 'string'
-          ? arg
-          : isSummary(arg)
-            ? arg.url
-            : null;
+        typeof arg === 'string' ? arg : isSummary(arg) ? arg.url : null;
       if (url) {
         void vscode.env.openExternal(vscode.Uri.parse(url));
       }
     }),
-    vscode.commands.registerCommand(
-      '_agora.loadMore',
-      async (categoryId: string, cursor: string) => {
-        try {
-          await tree.loadCategoryPage(categoryId, cursor);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          void vscode.window.showErrorMessage(msg);
-        }
-      },
-    ),
   );
 }
 

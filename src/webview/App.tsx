@@ -14,6 +14,9 @@ import { Sidebar } from './components/Sidebar';
 import { DiscussionList } from './components/DiscussionList';
 import { Thread } from './components/Thread';
 import { Button, EmptyState, Spinner } from './components/primitives';
+import { SidebarApp } from './components/SidebarApp';
+
+export type AgoraMode = 'sidebar' | 'panel';
 
 type View = { name: 'list' } | { name: 'thread'; number: number };
 
@@ -95,7 +98,14 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
-export function App(): JSX.Element {
+export function App({ mode }: { mode: AgoraMode }): JSX.Element {
+  if (mode === 'sidebar') {
+    return <SidebarApp />;
+  }
+  return <PanelApp />;
+}
+
+function PanelApp(): JSX.Element {
   const [state, dispatch] = useReducer(reducer, initialState);
   const readyRef = useRef(false);
 

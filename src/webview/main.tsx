@@ -8,8 +8,11 @@ if (!container) {
   throw new Error('Missing #root');
 }
 
+const mode =
+  (document.documentElement.dataset.agoraMode as 'sidebar' | 'panel') ?? 'panel';
+
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <App mode={mode} />
   </StrictMode>,
 );
