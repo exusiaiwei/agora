@@ -7,7 +7,12 @@ import type {
   Repository,
 } from '../../shared/types';
 
-type Node = CategoryNode | DiscussionNode | LoadMoreNode | InfoNode;
+type Node = RootNode | CategoryNode | DiscussionNode | LoadMoreNode | InfoNode;
+
+interface RootNode {
+  kind: 'root';
+  repo: Repository;
+}
 
 interface CategoryNode {
   kind: 'category';
@@ -70,6 +75,16 @@ export class DiscussionsTreeProvider
 
   getTreeItem(node: Node): vscode.TreeItem {
     switch (node.kind) {
+      case 'root': {
+        const item = new vscode.TreeItem(
+          `${node.repo.owner}/${node.repo.name}`,
+          vscode.TreeItemCollapsibleState.Expanded,
+        );
+        item.id = `root:${node.repo.owner}/${node.repo.name}`;
+        item.iconPath = new vscode.ThemeIcon('repo');
+        item.contextValue = 'root';
+        return item;
+      }
       case 'category': {
         const item = new vscode.TreeItem(
           `${node.category.emoji} ${node.category.name}`.trim(),
@@ -127,7 +142,14 @@ export class DiscussionsTreeProvider
       return [];
     }
     if (!node) {
-      return this.getRoot();
+      // Wrap categories in a repo-named root so leaf rows live at
+      // indent level 2 — matching the visual rhythm of native views
+      // like the Remote Explorer where leaf icons sit clearly to the
+      // right of the indent guide rather than hugging it.
+      return [{ kind: 'root', repo: this.repo }];
+    }
+    if (node.kind === 'root') {
+      return this.getCategoriesLevel();
     }
     if (node.kind === 'category') {
       return this.getCategoryChildren(node.category.id);
@@ -135,7 +157,7 @@ export class DiscussionsTreeProvider
     return [];
   }
 
-  private async getRoot(): Promise<Node[]> {
+  private async getCategoriesLevel(): Promise<Node[]> {
     if (!this.rootLoaded && !this.rootError) {
       try {
         await this.loadCategories();
