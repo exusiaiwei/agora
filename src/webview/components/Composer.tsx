@@ -241,9 +241,16 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
       )}
 
       <div className="flex items-center gap-2 px-2 py-1.5 border-t border-[var(--vscode-widget-border,var(--vscode-panel-border))]">
-        <span className="text-xs text-muted">
-          {strings.composerShortcutHint}
-        </span>
+        {/* Hint is hidden in compact mode (inline reply / edit forms
+            under comments); the parent column is often narrow and
+            wrapping the hint onto a second line pushes the action
+            buttons around. The shortcuts still work — they're just
+            not surfaced here. */}
+        {!compact && (
+          <span className="text-xs text-muted truncate">
+            {strings.composerShortcutHint}
+          </span>
+        )}
         <div className="flex-1" />
         {cancellable && (
           <button

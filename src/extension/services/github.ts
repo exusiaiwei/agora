@@ -102,8 +102,8 @@ export class GitHubService {
     const comments = d.comments.nodes.map((c) => mapComment(c));
     return {
       ...mapSummary(d),
+      body: d.body,
       bodyHTML: d.bodyHTML,
-      bodyText: d.bodyText,
       viewerCanUpdate: d.viewerCanUpdate,
       viewerCanDelete: d.viewerCanDelete,
       viewerCanReact: d.viewerCanReact,
@@ -295,8 +295,8 @@ function mapComment(c: RawComment): CommentNode {
   return {
     id: c.id,
     databaseId: c.databaseId,
+    body: c.body,
     bodyHTML: c.bodyHTML,
-    bodyText: c.bodyText,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
     author: c.author
@@ -358,8 +358,8 @@ interface RawDiscussionSummary {
 interface RawComment {
   id: string;
   databaseId: number | null;
+  body: string;
   bodyHTML: string;
-  bodyText: string;
   createdAt: string;
   updatedAt: string;
   author: RawAuthor | null;
@@ -387,8 +387,8 @@ interface ListDiscussionsResponse {
 interface GetDiscussionResponse {
   repository: {
     discussion: RawDiscussionSummary & {
+      body: string;
       bodyHTML: string;
-      bodyText: string;
       viewerCanUpdate: boolean;
       viewerCanDelete: boolean;
       viewerCanReact: boolean;
@@ -458,8 +458,8 @@ const COMMENT_FRAGMENT = /* GraphQL */ `
   fragment CommentFields on DiscussionComment {
     id
     databaseId
+    body
     bodyHTML
-    bodyText
     createdAt
     updatedAt
     isAnswer
@@ -512,8 +512,8 @@ const GET_DISCUSSION_QUERY = /* GraphQL */ `
     repository(owner: $owner, name: $name) {
       discussion(number: $number) {
         ...DiscussionSummary
+        body
         bodyHTML
-        bodyText
         viewerCanUpdate
         viewerCanDelete
         viewerCanReact

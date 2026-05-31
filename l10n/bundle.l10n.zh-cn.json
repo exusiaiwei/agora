@@ -47,7 +47,7 @@
   "Write a comment in Markdown…": "用 Markdown 写下评论…",
   "Comment": "评论",
   "Preview": "预览",
-  "⌘/Ctrl + Enter to submit · **B** _I_ `K` for link · supports Markdown": "⌘/Ctrl + Enter 提交 · **B** _I_ `K` 链接 · 支持 Markdown",
+  "⌘/Ctrl + Enter to submit · ⌘B / ⌘I / ⌘K · supports Markdown": "⌘/Ctrl + Enter 提交 · ⌘B 粗体 · ⌘I 斜体 · ⌘K 链接",
   "Nothing to preview.": "暂无内容可预览。",
   "Category": "分类",
   "Title": "标题",

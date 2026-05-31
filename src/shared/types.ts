@@ -48,8 +48,12 @@ export interface DiscussionSummary {
 export interface CommentNode {
   id: string;
   databaseId: number | null;
+  /** Raw Markdown source (server-canonical). Use for rendering and as
+   *  the seed value when opening the comment in an edit Composer. */
+  body: string;
+  /** GitHub-rendered HTML — kept around as a reference but the
+   *  webview renders Markdown locally for sandboxing + styling. */
   bodyHTML: string;
-  bodyText: string;
   createdAt: string;
   updatedAt: string;
   author: Actor | null;
@@ -75,8 +79,8 @@ export type ReactionContent =
   | 'EYES';
 
 export interface DiscussionDetail extends DiscussionSummary {
+  body: string;
   bodyHTML: string;
-  bodyText: string;
   viewerCanUpdate: boolean;
   viewerCanDelete: boolean;
   viewerCanReact: boolean;

@@ -35,7 +35,7 @@ export function buildWebviewStrings(): WebviewStringsDTO {
     composerSubmit: vscode.l10n.t('Comment'),
     composerPreview: vscode.l10n.t('Preview'),
     composerEdit: vscode.l10n.t('Edit'),
-    composerShortcutHint: vscode.l10n.t('⌘/Ctrl + Enter to submit · **B** _I_ `K` for link · supports Markdown'),
+    composerShortcutHint: vscode.l10n.t('⌘/Ctrl + Enter to submit · ⌘B / ⌘I / ⌘K · supports Markdown'),
     composerNothingToPreview: vscode.l10n.t('Nothing to preview.'),
     composerCategoryLabel: vscode.l10n.t('Category'),
     composerTitleLabel: vscode.l10n.t('Title'),

@@ -155,7 +155,7 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
             {editing ? (
               <Composer
                 draftKey={`discussion:${d.id}:edit`}
-                initialBody={d.bodyText}
+                initialBody={d.body}
                 submitLabel={strings.save}
                 cancellable
                 onCancel={() => setEditing(false)}
@@ -171,7 +171,7 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
                 }}
               />
             ) : (
-              <Markdown source={d.bodyText} />
+              <Markdown source={d.body} />
             )}
           </div>
 
@@ -354,7 +354,7 @@ function Comment({
       {editing ? (
         <Composer
           draftKey={`comment:${node.id}:edit`}
-          initialBody={node.bodyText}
+          initialBody={node.body}
           submitLabel={strings.save}
           cancellable
           onCancel={() => setEditing(false)}
@@ -365,7 +365,7 @@ function Comment({
           }}
         />
       ) : (
-        <Markdown source={node.bodyText} />
+        <Markdown source={node.body} />
       )}
 
       {(node.replies.length > 0 || replying) && (
@@ -464,7 +464,7 @@ function Reply({
       {editing ? (
         <Composer
           draftKey={`comment:${node.id}:edit`}
-          initialBody={node.bodyText}
+          initialBody={node.body}
           submitLabel={strings.save}
           cancellable
           compact
@@ -476,7 +476,7 @@ function Reply({
           }}
         />
       ) : (
-        <Markdown source={node.bodyText} />
+        <Markdown source={node.body} />
       )}
     </article>
   );
