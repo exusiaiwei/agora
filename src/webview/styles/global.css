@@ -26,20 +26,18 @@ body {
   font-size: 13px;
   line-height: 1.6;
   color: var(--vscode-foreground);
-  /* Per-surface background. VS Code injects every theme color into the
-     webview, but `--vscode-editor-background` always means the editor
-     area regardless of where the webview lives — so a sidebar webview
-     ended up looking flat black against the actual sidebar around it.
-     We pick the right surface variable per mode, the way Copilot Chat
-     and the built-in SCM/Search views do. */
+  /* Surface color. We use the sidebar's background for BOTH the
+     sidebar view and the main panel webview — even though VS Code's
+     default for editor-area webviews is `--vscode-editor-background`,
+     a forum/chat-style UI reads better as a "tool surface" than as a
+     "document surface", and this matches what Copilot Chat / Claude
+     Code / the GitHub Pull Requests review tab do when they open in
+     the editor area. The hairline between this and the tab bar is
+     deliberate visual signposting: "this isn't a file you're editing,
+     it's a conversation panel." */
   background: var(--vscode-sideBar-background);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-html[data-agora-mode="panel"] body {
-  background: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
 }
 
 * {

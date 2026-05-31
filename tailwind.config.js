@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: 'var(--vscode-editor-background)',
-        fg: 'var(--vscode-editor-foreground)',
+        bg: 'var(--vscode-sideBar-background)',
+        fg: 'var(--vscode-foreground)',
         muted: 'var(--vscode-descriptionForeground)',
         border: 'var(--vscode-widget-border, var(--vscode-panel-border))',
         accent: 'var(--vscode-textLink-foreground)',
