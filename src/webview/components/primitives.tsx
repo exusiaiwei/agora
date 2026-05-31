@@ -1,4 +1,12 @@
-import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { cn } from '../lib/cn';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
@@ -169,4 +177,110 @@ export function Spinner({ label }: { label?: string }): JSX.Element {
       {label}
     </div>
   );
+}
+
+export interface DropdownMenuItem {
+  icon?: string;
+  label: string;
+  onSelect: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+}
+
+export function DropdownMenu({
+  items,
+  triggerLabel,
+  align = 'end',
+}: {
+  items: DropdownMenuItem[];
+  triggerLabel: string;
+  align?: 'start' | 'end';
+}): JSX.Element | null {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent): void => {
+      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div ref={wrapperRef} className="relative inline-block">
+      <button
+        type="button"
+        title={triggerLabel}
+        aria-label={triggerLabel}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'inline-flex items-center justify-center w-6 h-6 rounded transition-colors duration-100',
+          open ? 'bg-hover text-fg' : 'text-fg/60 hover:text-fg hover:bg-hover',
+        )}
+      >
+        <span className="codicon codicon-kebab-vertical" aria-hidden="true" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className={cn(
+            'absolute z-50 mt-1 min-w-[180px] rounded-md py-1',
+            'bg-[var(--vscode-menu-background,var(--vscode-editor-background))]',
+            'border border-[var(--vscode-menu-border,var(--vscode-widget-border,var(--vscode-panel-border)))]',
+            'shadow-[var(--ag-shadow-pop)]',
+            align === 'end' ? 'right-0' : 'left-0',
+          )}
+        >
+          {items.map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              role="menuitem"
+              disabled={item.disabled}
+              onClick={() => {
+                if (item.disabled) return;
+                setOpen(false);
+                item.onSelect();
+              }}
+              className={cn(
+                'flex items-center gap-2 w-full px-3 h-[26px] text-left text-sm transition-colors duration-100',
+                'text-[var(--vscode-menu-foreground,var(--vscode-foreground))]',
+                'hover:bg-[var(--vscode-menu-selectionBackground,var(--vscode-list-hoverBackground))]',
+                'hover:text-[var(--vscode-menu-selectionForeground,var(--vscode-foreground))]',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+                item.destructive && 'text-error hover:text-error',
+              )}
+            >
+              {item.icon && (
+                <span
+                  className={`codicon codicon-${item.icon} shrink-0`}
+                  aria-hidden="true"
+                />
+              )}
+              <span className="flex-1 truncate">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MenuTriggerSlot({ children }: { children: ReactNode }): JSX.Element {
+  // Small wrapper to keep the menu trigger from getting compressed by
+  // flex parents that distribute width — used in card headers.
+  return <div className="shrink-0">{children}</div>;
 }
