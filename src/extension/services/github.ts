@@ -56,6 +56,14 @@ export class GitHubService {
     return data.repository.discussionCategories.nodes.map(mapCategory);
   }
 
+  async getRepositoryId(repo: Repository): Promise<string> {
+    const data = await this.run<{ repository: { id: string } }>(REPO_ID_QUERY, {
+      owner: repo.owner,
+      name: repo.name,
+    });
+    return data.repository.id;
+  }
+
   async listDiscussions(
     repo: Repository,
     options: { categoryId: string | null; cursor: string | null; first: number },
@@ -96,6 +104,90 @@ export class GitHubService {
       viewerCanReact: d.viewerCanReact,
       comments,
     };
+  }
+
+  // ─── Mutations ────────────────────────────────────────────────────
+
+  async addDiscussion(args: {
+    repositoryId: string;
+    categoryId: string;
+    title: string;
+    body: string;
+  }): Promise<{ number: number; url: string }> {
+    const data = await this.run<{ addDiscussion: { discussion: { number: number; url: string } } }>(
+      ADD_DISCUSSION_MUTATION,
+      { input: args },
+    );
+    return data.addDiscussion.discussion;
+  }
+
+  async updateDiscussion(args: {
+    discussionId: string;
+    title?: string;
+    body?: string;
+    categoryId?: string;
+  }): Promise<void> {
+    await this.run(UPDATE_DISCUSSION_MUTATION, { input: args });
+  }
+
+  async deleteDiscussion(discussionId: string): Promise<void> {
+    await this.run(DELETE_DISCUSSION_MUTATION, { input: { id: discussionId } });
+  }
+
+  async addDiscussionComment(args: {
+    discussionId: string;
+    body: string;
+    replyToId?: string;
+  }): Promise<CommentNode> {
+    const data = await this.run<{ addDiscussionComment: { comment: RawComment } }>(
+      ADD_COMMENT_MUTATION,
+      { input: args },
+    );
+    return mapComment(data.addDiscussionComment.comment);
+  }
+
+  async updateDiscussionComment(commentId: string, body: string): Promise<CommentNode> {
+    const data = await this.run<{ updateDiscussionComment: { comment: RawComment } }>(
+      UPDATE_COMMENT_MUTATION,
+      { input: { commentId, body } },
+    );
+    return mapComment(data.updateDiscussionComment.comment);
+  }
+
+  async deleteDiscussionComment(commentId: string): Promise<void> {
+    await this.run(DELETE_COMMENT_MUTATION, { input: { id: commentId } });
+  }
+
+  async markCommentAsAnswer(commentId: string): Promise<void> {
+    await this.run(MARK_ANSWER_MUTATION, { input: { id: commentId } });
+  }
+
+  async unmarkCommentAsAnswer(commentId: string): Promise<void> {
+    await this.run(UNMARK_ANSWER_MUTATION, { input: { id: commentId } });
+  }
+
+  async lockDiscussion(discussionId: string): Promise<void> {
+    await this.run(LOCK_MUTATION, { input: { lockableId: discussionId } });
+  }
+
+  async unlockDiscussion(discussionId: string): Promise<void> {
+    await this.run(UNLOCK_MUTATION, { input: { lockableId: discussionId } });
+  }
+
+  async pinDiscussion(discussionId: string): Promise<void> {
+    await this.run(PIN_DISCUSSION_MUTATION, { input: { discussionId } });
+  }
+
+  async unpinDiscussion(pinnedDiscussionId: string): Promise<void> {
+    await this.run(UNPIN_DISCUSSION_MUTATION, { input: { id: pinnedDiscussionId } });
+  }
+
+  async addReaction(subjectId: string, content: ReactionContent): Promise<void> {
+    await this.run(ADD_REACTION_MUTATION, { input: { subjectId, content } });
+  }
+
+  async removeReaction(subjectId: string, content: ReactionContent): Promise<void> {
+    await this.run(REMOVE_REACTION_MUTATION, { input: { subjectId, content } });
   }
 
   private async run<T>(query: string, variables: Record<string, unknown>): Promise<T> {
@@ -435,4 +527,124 @@ const GET_DISCUSSION_QUERY = /* GraphQL */ `
   }
   ${DISCUSSION_SUMMARY_FRAGMENT}
   ${COMMENT_FRAGMENT}
+`;
+
+// ─── Mutations ───────────────────────────────────────────────────────
+
+export type ReactionContent =
+  | 'THUMBS_UP'
+  | 'THUMBS_DOWN'
+  | 'LAUGH'
+  | 'HOORAY'
+  | 'CONFUSED'
+  | 'HEART'
+  | 'ROCKET'
+  | 'EYES';
+
+const REPO_ID_QUERY = /* GraphQL */ `
+  query AgoraRepoId($owner: String!, $name: String!) {
+    repository(owner: $owner, name: $name) { id }
+  }
+`;
+
+const ADD_DISCUSSION_MUTATION = /* GraphQL */ `
+  mutation AgoraAddDiscussion($input: CreateDiscussionInput!) {
+    createDiscussion(input: $input) {
+      discussion { number url }
+    }
+  }
+`;
+
+const UPDATE_DISCUSSION_MUTATION = /* GraphQL */ `
+  mutation AgoraUpdateDiscussion($input: UpdateDiscussionInput!) {
+    updateDiscussion(input: $input) {
+      discussion { id }
+    }
+  }
+`;
+
+const DELETE_DISCUSSION_MUTATION = /* GraphQL */ `
+  mutation AgoraDeleteDiscussion($input: DeleteDiscussionInput!) {
+    deleteDiscussion(input: $input) {
+      discussion { id }
+    }
+  }
+`;
+
+const ADD_COMMENT_MUTATION = /* GraphQL */ `
+  mutation AgoraAddComment($input: AddDiscussionCommentInput!) {
+    addDiscussionComment(input: $input) {
+      comment { ...CommentFields replies(first: 50) { totalCount nodes { ...CommentFields } } }
+    }
+  }
+  ${COMMENT_FRAGMENT}
+`;
+
+const UPDATE_COMMENT_MUTATION = /* GraphQL */ `
+  mutation AgoraUpdateComment($input: UpdateDiscussionCommentInput!) {
+    updateDiscussionComment(input: $input) {
+      comment { ...CommentFields replies(first: 50) { totalCount nodes { ...CommentFields } } }
+    }
+  }
+  ${COMMENT_FRAGMENT}
+`;
+
+const DELETE_COMMENT_MUTATION = /* GraphQL */ `
+  mutation AgoraDeleteComment($input: DeleteDiscussionCommentInput!) {
+    deleteDiscussionComment(input: $input) {
+      comment { id }
+    }
+  }
+`;
+
+const MARK_ANSWER_MUTATION = /* GraphQL */ `
+  mutation AgoraMarkAnswer($input: MarkDiscussionCommentAsAnswerInput!) {
+    markDiscussionCommentAsAnswer(input: $input) {
+      discussion { id }
+    }
+  }
+`;
+
+const UNMARK_ANSWER_MUTATION = /* GraphQL */ `
+  mutation AgoraUnmarkAnswer($input: UnmarkDiscussionCommentAsAnswerInput!) {
+    unmarkDiscussionCommentAsAnswer(input: $input) {
+      discussion { id }
+    }
+  }
+`;
+
+const LOCK_MUTATION = /* GraphQL */ `
+  mutation AgoraLock($input: LockLockableInput!) {
+    lockLockable(input: $input) { lockedRecord { __typename } }
+  }
+`;
+
+const UNLOCK_MUTATION = /* GraphQL */ `
+  mutation AgoraUnlock($input: UnlockLockableInput!) {
+    unlockLockable(input: $input) { unlockedRecord { __typename } }
+  }
+`;
+
+const PIN_DISCUSSION_MUTATION = /* GraphQL */ `
+  mutation AgoraPin($input: PinDiscussionInput!) {
+    pinDiscussion(input: $input) { pinnedDiscussion { id } }
+  }
+`;
+
+const UNPIN_DISCUSSION_MUTATION = /* GraphQL */ `
+  mutation AgoraUnpin($input: UnpinDiscussionInput!) {
+    unpinDiscussion(input: $input) { pinnedDiscussion { id } }
+  }
+`;
+
+const ADD_REACTION_MUTATION = /* GraphQL */ `
+  mutation AgoraAddReaction($input: AddReactionInput!) {
+    addReaction(input: $input) { reaction { content } }
+  }
+`;
+
+const REMOVE_REACTION_MUTATION = /* GraphQL */ `
+  mutation AgoraRemoveReaction($input: RemoveReactionInput!) {
+    removeReaction(input: $input) { reaction { content } }
+  }
 `;
