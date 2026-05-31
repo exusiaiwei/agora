@@ -4,6 +4,7 @@ import { Avatar, Badge, DropdownMenu, type DropdownMenuItem, IconButton } from '
 import { Markdown } from './Markdown';
 import { Composer, type ComposerHandle } from './Composer';
 import { QuoteProvider, useQuoteSurface } from './QuoteSelection';
+import { ReactionBar } from './ReactionBar';
 import { relativeTime, absoluteTime } from '../lib/time';
 import { cn } from '../lib/cn';
 import { useStrings } from '../lib/strings';
@@ -199,7 +200,7 @@ function ThreadInner({ discussion: d, onBack, onOpenInBrowser, onChange }: Threa
             )}
           </div>
 
-          <div className="mt-6 flex items-center gap-2 text-sm text-muted">
+          <div className="mt-6 flex items-center gap-2 flex-wrap text-sm text-muted">
             <button
               type="button"
               className={cn(
@@ -219,6 +220,12 @@ function ThreadInner({ discussion: d, onBack, onOpenInBrowser, onChange }: Threa
               <span className="codicon codicon-comment" aria-hidden="true" />
               <span className="tabular-nums">{d.commentCount}</span>
             </span>
+            <ReactionBar
+              subjectId={d.id}
+              groups={d.reactionGroups}
+              canReact={d.viewerCanReact}
+              onChange={onChange}
+            />
           </div>
 
           <div className="my-8 h-px bg-[var(--vscode-widget-border,var(--vscode-panel-border))]" />
@@ -412,6 +419,18 @@ function Comment({
         </div>
       )}
 
+      {!editing &&
+        (node.viewerCanReact || node.reactionGroups.some((g) => g.count > 0)) && (
+          <div className="mt-3">
+            <ReactionBar
+              subjectId={node.id}
+              groups={node.reactionGroups}
+              canReact={node.viewerCanReact}
+              onChange={onChange}
+            />
+          </div>
+        )}
+
       {(node.replies.length > 0 || replying) && (
         <div className="mt-4 pl-4 border-l-2 border-[var(--vscode-widget-border,var(--vscode-panel-border))] flex flex-col gap-4">
           {node.replies.map((r) => (
@@ -555,6 +574,18 @@ function Reply({
           <Markdown source={node.body} />
         </div>
       )}
+
+      {!editing &&
+        (node.viewerCanReact || node.reactionGroups.some((g) => g.count > 0)) && (
+          <div className="mt-2">
+            <ReactionBar
+              subjectId={node.id}
+              groups={node.reactionGroups}
+              canReact={node.viewerCanReact}
+              onChange={onChange}
+            />
+          </div>
+        )}
 
       {canReply && (
         <div className="mt-2">

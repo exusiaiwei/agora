@@ -64,6 +64,8 @@ export interface CommentNode {
   viewerCanDelete: boolean;
   viewerCanMarkAsAnswer: boolean;
   viewerCanUnmarkAsAnswer: boolean;
+  viewerCanReact: boolean;
+  reactionGroups: ReactionGroup[];
   replies: CommentNode[];
   replyCount: number;
 }
@@ -78,12 +80,19 @@ export type ReactionContent =
   | 'ROCKET'
   | 'EYES';
 
+export interface ReactionGroup {
+  content: ReactionContent;
+  viewerHasReacted: boolean;
+  count: number;
+}
+
 export interface DiscussionDetail extends DiscussionSummary {
   body: string;
   bodyHTML: string;
   viewerCanUpdate: boolean;
   viewerCanDelete: boolean;
   viewerCanReact: boolean;
+  reactionGroups: ReactionGroup[];
   comments: CommentNode[];
 }
 

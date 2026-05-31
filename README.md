@@ -7,7 +7,7 @@ leaving VS Code.
 
 ## Status
 
-**Alpha (`v0.1.0`).** The core read / write loop is in:
+**Alpha (`v0.1.1`).** The core read / write loop is in:
 
 - Browse discussions on the detected repo, filter by category, paginate.
 - Open a thread to read the discussion + comments + nested replies, with
@@ -19,11 +19,14 @@ leaving VS Code.
 - Selection-based quote reply: highlight any text in a comment, press
   `R` (or click the floating "Quote reply" button) and the selection
   gets `> `-quoted into the appropriate reply composer.
+- React to discussions, comments, and replies (👍 👎 😄 🎉 😕 ❤️ 🚀 👀);
+  toggle an existing reaction by clicking its chip; pick a new one from
+  the `+` smiley button.
 - Drafts persist between panel closes for both new posts and replies.
 
-Roadmap (subsequent `0.1.x` / `0.2` iterations): reactions, search /
-advanced filters, `@mention` autocomplete, pin / transfer / label
-management, automated tests.
+Roadmap (subsequent `0.1.x` / `0.2` iterations): search / advanced
+filters, `@mention` autocomplete, pin / transfer / label management,
+automated tests.
 
 Treat this as dogfood-grade — issues welcome.
 

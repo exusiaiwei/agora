@@ -129,13 +129,28 @@ function PanelApp(): JSX.Element {
     }
   }, []);
 
-  const loadThread = useCallback(async (number: number) => {
-    dispatch({ type: 'thread/loading', number });
+  const loadThread = useCallback(async (number: number, opts?: { silent?: boolean }) => {
+    // `silent` reloads keep the previous discussion on screen until
+    // the new payload arrives — used after a mutation (post / edit /
+    // react / lock / …) so the thread doesn't blink to a spinner for
+    // every small action. Initial navigation still shows the spinner.
+    if (!opts?.silent) {
+      dispatch({ type: 'thread/loading', number });
+    }
     try {
       const discussion = await rpc({ kind: 'getDiscussion', number });
       dispatch({ type: 'thread/loaded', discussion });
     } catch (err) {
-      dispatch({ type: 'thread/error', error: err instanceof Error ? err.message : String(err) });
+      // In silent mode the user is staring at a working thread; we
+      // don't want to nuke it with an error screen because a single
+      // refetch hiccuped. The next mutation will re-attempt, and if
+      // something is truly broken the user can hit refresh.
+      if (!opts?.silent) {
+        dispatch({ type: 'thread/error', error: err instanceof Error ? err.message : String(err) });
+      } else {
+        // eslint-disable-next-line no-console
+        console.warn('silent reload failed:', err);
+      }
     }
   }, []);
 
@@ -203,7 +218,7 @@ function AppBody({
 }: {
   state: AppState;
   loadList: (id: string | null) => void;
-  loadThread: (n: number) => void;
+  loadThread: (n: number, opts?: { silent?: boolean }) => void;
   dispatch: (a: Action) => void;
 }): JSX.Element {
   const strings = useStrings();
@@ -253,7 +268,7 @@ function AppBody({
             onBack={() => dispatch({ type: 'navigate', view: { name: 'list' } })}
             onOpenInBrowser={(url) => rpc({ kind: 'openInBrowser', url })}
             onChange={() => {
-              if (state.view.name === 'thread') loadThread(state.view.number);
+              if (state.view.name === 'thread') loadThread(state.view.number, { silent: true });
             }}
           />
         )}
