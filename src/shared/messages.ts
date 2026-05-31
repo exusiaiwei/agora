@@ -1,6 +1,8 @@
 import type {
+  CommentNode,
   DiscussionDetail,
   DiscussionListPage,
+  ReactionContent,
   Repository,
   ViewerInfo,
 } from './types';
@@ -16,7 +18,20 @@ export type WebviewRequest =
   | { kind: 'getDiscussion'; number: number }
   | { kind: 'openInBrowser'; url: string }
   | { kind: 'signIn' }
-  | { kind: 'redetectRepo' };
+  | { kind: 'redetectRepo' }
+  // ── Writes ─────────────────────────────────────────────────
+  | { kind: 'addDiscussion'; categoryId: string; title: string; body: string }
+  | { kind: 'updateDiscussion'; discussionId: string; title?: string; body?: string; categoryId?: string }
+  | { kind: 'deleteDiscussion'; discussionId: string }
+  | { kind: 'addComment'; discussionId: string; body: string; replyToId?: string }
+  | { kind: 'updateComment'; commentId: string; body: string }
+  | { kind: 'deleteComment'; commentId: string }
+  | { kind: 'markAnswer'; commentId: string }
+  | { kind: 'unmarkAnswer'; commentId: string }
+  | { kind: 'lockDiscussion'; discussionId: string }
+  | { kind: 'unlockDiscussion'; discussionId: string }
+  | { kind: 'addReaction'; subjectId: string; content: ReactionContent }
+  | { kind: 'removeReaction'; subjectId: string; content: ReactionContent };
 
 export interface WebviewRpcMessage {
   type: 'rpc';
@@ -48,6 +63,18 @@ export type HostRpcResult<R extends WebviewRequest> =
   R extends { kind: 'openInBrowser' } ? { ok: true } :
   R extends { kind: 'signIn' } ? { ok: true } :
   R extends { kind: 'redetectRepo' } ? { ok: true } :
+  R extends { kind: 'addDiscussion' } ? { number: number; url: string } :
+  R extends { kind: 'updateDiscussion' } ? { ok: true } :
+  R extends { kind: 'deleteDiscussion' } ? { ok: true } :
+  R extends { kind: 'addComment' } ? CommentNode :
+  R extends { kind: 'updateComment' } ? CommentNode :
+  R extends { kind: 'deleteComment' } ? { ok: true } :
+  R extends { kind: 'markAnswer' } ? { ok: true } :
+  R extends { kind: 'unmarkAnswer' } ? { ok: true } :
+  R extends { kind: 'lockDiscussion' } ? { ok: true } :
+  R extends { kind: 'unlockDiscussion' } ? { ok: true } :
+  R extends { kind: 'addReaction' } ? { ok: true } :
+  R extends { kind: 'removeReaction' } ? { ok: true } :
   never;
 
 export interface HostRpcResponseSuccess {

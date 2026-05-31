@@ -37,5 +37,22 @@
   "Repository or discussion not found (404).": "未找到对应的仓库或讨论 (404)。",
   "Cannot access '{0}'. The repository may not exist, be private without sufficient token scope, or have Discussions disabled.": "无法访问 '{0}'。可能是仓库不存在、私有仓库但 token 缺少权限，或该仓库未启用 Discussions。",
   "Open the Accounts menu in the Activity Bar to fully sign out of GitHub.": "请打开活动栏的「账户」菜单完成 GitHub 退出登录。",
-  "Open Accounts menu": "打开账户菜单"
+  "Open Accounts menu": "打开账户菜单",
+  "Cancel": "取消",
+  "Edit": "编辑",
+  "Delete": "删除",
+  "Save": "保存",
+  "New discussion": "发起讨论",
+  "Write a comment in Markdown…": "用 Markdown 写下评论…",
+  "Comment": "评论",
+  "Preview": "预览",
+  "⌘/Ctrl + Enter to submit · **B** _I_ `K` for link · supports Markdown": "⌘/Ctrl + Enter 提交 · **B** _I_ `K` 链接 · 支持 Markdown",
+  "Nothing to preview.": "暂无内容可预览。",
+  "Mark as answer": "标记为答案",
+  "Unmark as answer": "取消答案标记",
+  "Lock discussion": "锁定讨论",
+  "Unlock discussion": "解锁讨论",
+  "Delete this comment? This cannot be undone.": "确定删除这条评论？此操作不可撤销。",
+  "Delete this discussion and all its comments? This cannot be undone.": "确定删除这条讨论及其所有评论？此操作不可撤销。",
+  "Add reaction": "添加反应"
 }

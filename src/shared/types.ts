@@ -64,6 +64,16 @@ export interface CommentNode {
   replyCount: number;
 }
 
+export type ReactionContent =
+  | 'THUMBS_UP'
+  | 'THUMBS_DOWN'
+  | 'LAUGH'
+  | 'HOORAY'
+  | 'CONFUSED'
+  | 'HEART'
+  | 'ROCKET'
+  | 'EYES';
+
 export interface DiscussionDetail extends DiscussionSummary {
   bodyHTML: string;
   bodyText: string;
