@@ -54,6 +54,7 @@ export interface WebviewStringsDTO {
   composerReplyingToPrefix: string;
   composerQuote: string;
   composerQuoteTitle: string;
+  composerQuoteSelection: string;
   // Moderation
   markAsAnswer: string;
   unmarkAsAnswer: string;

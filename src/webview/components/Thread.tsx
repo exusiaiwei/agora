@@ -3,6 +3,7 @@ import type { CommentNode, DiscussionDetail } from '@shared/types';
 import { Avatar, Badge, DropdownMenu, type DropdownMenuItem, IconButton } from './primitives';
 import { Markdown } from './Markdown';
 import { Composer, type ComposerHandle } from './Composer';
+import { QuoteProvider, useQuoteSurface } from './QuoteSelection';
 import { relativeTime, absoluteTime } from '../lib/time';
 import { cn } from '../lib/cn';
 import { useStrings } from '../lib/strings';
@@ -17,12 +18,35 @@ interface ThreadProps {
   onChange: () => void;
 }
 
-export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: ThreadProps): JSX.Element {
+export function Thread(props: ThreadProps): JSX.Element {
+  // QuoteProvider must wrap the tree because surfaces (comments,
+  // replies, the thread-end composer) call useQuoteSurface to
+  // register themselves; the floating selection popover also lives
+  // inside the provider.
+  return (
+    <QuoteProvider>
+      <ThreadInner {...props} />
+    </QuoteProvider>
+  );
+}
+
+function ThreadInner({ discussion: d, onBack, onOpenInBrowser, onChange }: ThreadProps): JSX.Element {
   const strings = useStrings();
   const answer = d.comments.find((c) => c.isAnswer);
   const others = d.comments.filter((c) => !c.isAnswer);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(d.title);
+  const threadEndComposerRef = useRef<ComposerHandle>(null);
+
+  // Selecting text inside the discussion body funnels into the
+  // top-of-thread new-comment composer.
+  useQuoteSurface(
+    `discussion:${d.id}`,
+    useCallback((q: string) => {
+      threadEndComposerRef.current?.insertAtStart(q);
+      threadEndComposerRef.current?.focus();
+    }, []),
+  );
 
   const discussionMenu = useMemo<DropdownMenuItem[]>(() => {
     const items: DropdownMenuItem[] = [];
@@ -151,7 +175,7 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
             )}
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6" data-quote-surface={`discussion:${d.id}`}>
             {editing ? (
               <Composer
                 draftKey={`discussion:${d.id}:edit`}
@@ -235,6 +259,7 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser, onChange }: Thr
             ) : (
               <div className="mt-6">
                 <Composer
+                  ref={threadEndComposerRef}
                   draftKey={`discussion:${d.id}:reply`}
                   placeholder={strings.composerPlaceholder}
                   onSubmit={async (body) => {
@@ -266,6 +291,23 @@ function Comment({
 }): JSX.Element {
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
+  const inlineComposerRef = useRef<ComposerHandle>(null);
+
+  // Quote-selection surface: selecting text in this comment's body
+  // flips replying on and seeds the inline composer.
+  useQuoteSurface(
+    `comment:${node.id}`,
+    useCallback((q: string) => {
+      if (discussion.locked) return;
+      setReplying(true);
+      // The composer mounts on the next render once replying flips,
+      // so push the quote on the following frame.
+      requestAnimationFrame(() => {
+        inlineComposerRef.current?.insertAtStart(q);
+        inlineComposerRef.current?.focus();
+      });
+    }, [discussion.locked]),
+  );
 
   const menuItems = useMemo<DropdownMenuItem[]>(() => {
     const items: DropdownMenuItem[] = [];
@@ -365,7 +407,9 @@ function Comment({
           }}
         />
       ) : (
-        <Markdown source={node.body} />
+        <div data-quote-surface={`comment:${node.id}`}>
+          <Markdown source={node.body} />
+        </div>
       )}
 
       {(node.replies.length > 0 || replying) && (
@@ -383,6 +427,7 @@ function Comment({
 
           {replying && (
             <Composer
+              ref={inlineComposerRef}
               draftKey={`discussion:${discussion.id}:reply-to:${node.id}`}
               compact
               cancellable
@@ -465,19 +510,19 @@ function Reply({
   const canReply = !discussion.locked && !replying && !editing;
   const composerRef = useRef<ComposerHandle>(null);
 
-  // Build the GitHub-style quote block on demand — only inserted
-  // when the user explicitly clicks "Quote", not prefilled. Empty
-  // source lines become a bare `>` so the quote reads as one block;
-  // two trailing newlines drop the cursor onto a clean line.
-  const handleQuote = useCallback(() => {
-    const lines = node.body.split('\n');
-    if (lines.every((l) => l.trim() === '')) return;
-    const quote =
-      lines.map((line) => (line.length === 0 ? '>' : `> ${line}`)).join('\n') +
-      '\n\n';
-    composerRef.current?.insertAtStart(quote);
-    composerRef.current?.focus();
-  }, [node.body]);
+  // Selecting text inside this reply's body funnels into this
+  // reply's inline composer (with replying flipped on if needed).
+  useQuoteSurface(
+    `reply:${node.id}`,
+    useCallback((q: string) => {
+      if (discussion.locked) return;
+      setReplying(true);
+      requestAnimationFrame(() => {
+        composerRef.current?.insertAtStart(q);
+        composerRef.current?.focus();
+      });
+    }, [discussion.locked]),
+  );
 
   return (
     <article>
@@ -506,7 +551,9 @@ function Reply({
           }}
         />
       ) : (
-        <Markdown source={node.body} />
+        <div data-quote-surface={`reply:${node.id}`}>
+          <Markdown source={node.body} />
+        </div>
       )}
 
       {canReply && (
@@ -524,25 +571,13 @@ function Reply({
 
       {replying && (
         <div className="mt-2">
-          <div className="text-xs text-muted mb-1.5 flex items-center gap-1.5">
-            <span className="codicon codicon-reply" aria-hidden="true" />
-            {mentionLogin && (
-              <>
-                {strings.composerReplyingToPrefix}{' '}
-                <span className="text-fg/80 font-medium">@{mentionLogin}</span>
-              </>
-            )}
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={handleQuote}
-              title={strings.composerQuoteTitle}
-              className="inline-flex items-center gap-1 h-[20px] px-1.5 rounded text-fg/70 hover:text-fg hover:bg-hover transition-colors duration-100"
-            >
-              <span className="codicon codicon-quote" aria-hidden="true" />
-              {strings.composerQuote}
-            </button>
-          </div>
+          {mentionLogin && (
+            <div className="text-xs text-muted mb-1.5 flex items-center gap-1.5">
+              <span className="codicon codicon-reply" aria-hidden="true" />
+              {strings.composerReplyingToPrefix}{' '}
+              <span className="text-fg/80 font-medium">@{mentionLogin}</span>
+            </div>
+          )}
           {/* GitHub's Discussions API only allows a single nesting
               level — replyToId must point to a top-level comment.
               A "reply to a reply" is therefore sent as a fresh reply

@@ -44,6 +44,7 @@ export function buildWebviewStrings(): WebviewStringsDTO {
     composerReplyingToPrefix: vscode.l10n.t('Replying to'),
     composerQuote: vscode.l10n.t('Quote'),
     composerQuoteTitle: vscode.l10n.t('Insert the original message as a quote'),
+    composerQuoteSelection: vscode.l10n.t('Quote reply'),
     markAsAnswer: vscode.l10n.t('Mark as answer'),
     unmarkAsAnswer: vscode.l10n.t('Unmark as answer'),
     lockDiscussion: vscode.l10n.t('Lock discussion'),
