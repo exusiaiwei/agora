@@ -15,6 +15,8 @@ import { Markdown } from './Markdown';
 export interface ComposerHandle {
   focus: () => void;
   setBody: (body: string) => void;
+  /** Prepend text to the current body (useful for "Quote reply"). */
+  insertAtStart: (text: string) => void;
   clear: () => void;
 }
 
@@ -29,6 +31,14 @@ interface ComposerProps {
   cancellable?: boolean;
   /** When true, draft is wiped on successful submit. Defaults to true. */
   clearOnSubmit?: boolean;
+  /**
+   * Override the "should we persist a draft?" decision. By default a
+   * provided `initialBody` switches persistence off (edit flows). Set
+   * this explicitly to `true` when the initialBody is a *seed* the
+   * user is meant to keep editing — e.g. a quoted-reply scaffold —
+   * so a half-finished draft survives close/reopen.
+   */
+  persistDraft?: boolean;
   onSubmit: (body: string) => Promise<void> | void;
   onCancel?: () => void;
   /** Compact mode shrinks padding/min-height for inline use under comments. */
@@ -64,6 +74,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     busy,
     cancellable,
     clearOnSubmit = true,
+    persistDraft: persistDraftProp,
     onSubmit,
     onCancel,
     compact,
@@ -74,20 +85,27 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const strings = useStrings();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Edit flows pass `initialBody`. In that case we *don't* persist a
-  // draft: the constructor would shadow it anyway (initialBody wins
-  // over loadDraft), and silently writing edit-mode keystrokes to
-  // disk that can never be read back would just leak storage and
-  // lose work the user thinks is safe. New / reply composers (no
-  // initialBody) keep full draft persistence as before.
-  const persistDraft = initialBody === undefined;
+  // Default: persist when there's no seed (new / reply composers);
+  // don't persist when there is one (edit flows seed from the server
+  // canonical body, and we shouldn't silently write keystrokes that
+  // never get read back). Callers can override — e.g. quoted-reply
+  // composers want persistence AND a seed, with the draft winning
+  // once the user has started typing.
+  const persistDraft = persistDraftProp ?? initialBody === undefined;
 
-  const [body, setBody] = useState(() => initialBody ?? loadDraft(draftKey));
+  const [body, setBody] = useState(() => {
+    const draft = loadDraft(draftKey);
+    // When we persist drafts and one exists, it represents the
+    // user's in-progress work and beats any seed. Otherwise fall
+    // back to the seed (initialBody) and finally the empty string.
+    if (persistDraft && draft) return draft;
+    return initialBody ?? draft ?? '';
+  });
   const [preview, setPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Clear any stale draft from a prior session that we're about to
-  // ignore — keeps localStorage from accumulating unreachable entries.
+  // Wipe any stale draft we're about to ignore so localStorage
+  // doesn't accumulate unreachable entries from prior edit sessions.
   useEffect(() => {
     if (!persistDraft) saveDraft(draftKey, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,6 +128,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
     setBody: (b: string) => setBody(b),
+    insertAtStart: (text: string) => setBody((prev) => text + prev),
     clear: () => {
       setBody('');
       if (persistDraft) saveDraft(draftKey, '');

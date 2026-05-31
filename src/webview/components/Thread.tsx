@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { CommentNode, DiscussionDetail } from '@shared/types';
 import { Avatar, Badge, DropdownMenu, type DropdownMenuItem, IconButton } from './primitives';
 import { Markdown } from './Markdown';
-import { Composer } from './Composer';
+import { Composer, type ComposerHandle } from './Composer';
 import { relativeTime, absoluteTime } from '../lib/time';
 import { cn } from '../lib/cn';
 import { useStrings } from '../lib/strings';
@@ -371,7 +371,14 @@ function Comment({
       {(node.replies.length > 0 || replying) && (
         <div className="mt-4 pl-4 border-l-2 border-[var(--vscode-widget-border,var(--vscode-panel-border))] flex flex-col gap-4">
           {node.replies.map((r) => (
-            <Reply key={r.id} node={r} strings={strings} onChange={onChange} />
+            <Reply
+              key={r.id}
+              node={r}
+              discussion={discussion}
+              parentCommentId={node.id}
+              strings={strings}
+              onChange={onChange}
+            />
           ))}
 
           {replying && (
@@ -415,14 +422,19 @@ function Comment({
 
 function Reply({
   node,
+  discussion,
+  parentCommentId,
   strings,
   onChange,
 }: {
   node: CommentNode;
+  discussion: DiscussionDetail;
+  parentCommentId: string;
   strings: WebviewStrings;
   onChange: () => void;
 }): JSX.Element {
   const [editing, setEditing] = useState(false);
+  const [replying, setReplying] = useState(false);
   const menuItems = useMemo<DropdownMenuItem[]>(() => {
     const items: DropdownMenuItem[] = [];
     if (node.viewerCanUpdate) {
@@ -448,6 +460,24 @@ function Reply({
     }
     return items;
   }, [node, strings, onChange]);
+
+  const mentionLogin = node.author?.login;
+  const canReply = !discussion.locked && !replying && !editing;
+  const composerRef = useRef<ComposerHandle>(null);
+
+  // Build the GitHub-style quote block on demand — only inserted
+  // when the user explicitly clicks "Quote", not prefilled. Empty
+  // source lines become a bare `>` so the quote reads as one block;
+  // two trailing newlines drop the cursor onto a clean line.
+  const handleQuote = useCallback(() => {
+    const lines = node.body.split('\n');
+    if (lines.every((l) => l.trim() === '')) return;
+    const quote =
+      lines.map((line) => (line.length === 0 ? '>' : `> ${line}`)).join('\n') +
+      '\n\n';
+    composerRef.current?.insertAtStart(quote);
+    composerRef.current?.focus();
+  }, [node.body]);
 
   return (
     <article>
@@ -477,6 +507,72 @@ function Reply({
         />
       ) : (
         <Markdown source={node.body} />
+      )}
+
+      {canReply && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setReplying(true)}
+            className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded text-xs text-fg/60 hover:text-fg hover:bg-hover transition-colors duration-100"
+          >
+            <span className="codicon codicon-reply" aria-hidden="true" />
+            {strings.reply}
+          </button>
+        </div>
+      )}
+
+      {replying && (
+        <div className="mt-2">
+          <div className="text-xs text-muted mb-1.5 flex items-center gap-1.5">
+            <span className="codicon codicon-reply" aria-hidden="true" />
+            {mentionLogin && (
+              <>
+                {strings.composerReplyingToPrefix}{' '}
+                <span className="text-fg/80 font-medium">@{mentionLogin}</span>
+              </>
+            )}
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={handleQuote}
+              title={strings.composerQuoteTitle}
+              className="inline-flex items-center gap-1 h-[20px] px-1.5 rounded text-fg/70 hover:text-fg hover:bg-hover transition-colors duration-100"
+            >
+              <span className="codicon codicon-quote" aria-hidden="true" />
+              {strings.composerQuote}
+            </button>
+          </div>
+          {/* GitHub's Discussions API only allows a single nesting
+              level — replyToId must point to a top-level comment.
+              A "reply to a reply" is therefore sent as a fresh reply
+              under the same parent comment. Quoting is opt-in via
+              the button above rather than auto-prefilled: matches
+              GitHub's web behaviour, keeps the composer uncluttered
+              when the user just wants to chime in, and avoids
+              dumping multi-paragraph quotes the user then has to
+              delete. Thread participation handles notifying the
+              original author. */}
+          <Composer
+            ref={composerRef}
+            draftKey={`comment:${parentCommentId}:reply-to:${node.id}`}
+            compact
+            cancellable
+            submitLabel={strings.reply}
+            placeholder={strings.composerPlaceholder}
+            onCancel={() => setReplying(false)}
+            onSubmit={async (body) => {
+              await rpc({
+                kind: 'addComment',
+                discussionId: discussion.id,
+                body,
+                replyToId: parentCommentId,
+              });
+              setReplying(false);
+              onChange();
+            }}
+          />
+        </div>
       )}
     </article>
   );
