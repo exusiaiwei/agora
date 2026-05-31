@@ -6,9 +6,14 @@ import type {
   DiscussionDetail,
   DiscussionListPage,
   DiscussionSummary,
+  ReactionContent,
   Repository,
   ViewerInfo,
 } from '../../shared/types';
+
+// Re-export so callers that already import from this service can keep
+// doing so. The single source of truth lives in shared/types.
+export type { ReactionContent };
 
 type GraphqlFn = ReturnType<typeof graphql.defaults>;
 
@@ -530,16 +535,6 @@ const GET_DISCUSSION_QUERY = /* GraphQL */ `
 `;
 
 // ─── Mutations ───────────────────────────────────────────────────────
-
-export type ReactionContent =
-  | 'THUMBS_UP'
-  | 'THUMBS_DOWN'
-  | 'LAUGH'
-  | 'HOORAY'
-  | 'CONFUSED'
-  | 'HEART'
-  | 'ROCKET'
-  | 'EYES';
 
 const REPO_ID_QUERY = /* GraphQL */ `
   query AgoraRepoId($owner: String!, $name: String!) {

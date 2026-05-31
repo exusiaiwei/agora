@@ -118,6 +118,11 @@ export function NewDiscussionView({ onCreated, onCancel }: NewDiscussionViewProp
             <span className="block text-xs uppercase tracking-wider text-muted font-medium mb-1.5">
               {strings.composerBodyLabel}
             </span>
+            {/* Intentionally not `cancellable`: the header's back
+                button is the explicit cancel affordance. Letting
+                Escape navigate away would discard the title — which
+                lives in this view's state, not in the composer's
+                draft persistence — on a stray keypress. */}
             <Composer
               draftKey="new-discussion:body"
               placeholder={strings.composerPlaceholder}
@@ -141,8 +146,6 @@ export function NewDiscussionView({ onCreated, onCancel }: NewDiscussionViewProp
                 }
                 onCreated(result.number);
               }}
-              onCancel={onCancel}
-              cancellable
             />
           </div>
         </div>

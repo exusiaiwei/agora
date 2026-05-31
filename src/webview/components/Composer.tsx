@@ -73,15 +73,31 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
 ) {
   const strings = useStrings();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Edit flows pass `initialBody`. In that case we *don't* persist a
+  // draft: the constructor would shadow it anyway (initialBody wins
+  // over loadDraft), and silently writing edit-mode keystrokes to
+  // disk that can never be read back would just leak storage and
+  // lose work the user thinks is safe. New / reply composers (no
+  // initialBody) keep full draft persistence as before.
+  const persistDraft = initialBody === undefined;
+
   const [body, setBody] = useState(() => initialBody ?? loadDraft(draftKey));
   const [preview, setPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Persist draft (debounced via timeout).
+  // Clear any stale draft from a prior session that we're about to
+  // ignore — keeps localStorage from accumulating unreachable entries.
   useEffect(() => {
+    if (!persistDraft) saveDraft(draftKey, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!persistDraft) return;
     const t = setTimeout(() => saveDraft(draftKey, body), 250);
     return () => clearTimeout(t);
-  }, [body, draftKey]);
+  }, [body, draftKey, persistDraft]);
 
   // Auto-resize textarea to fit content.
   useEffect(() => {
@@ -96,7 +112,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     setBody: (b: string) => setBody(b),
     clear: () => {
       setBody('');
-      saveDraft(draftKey, '');
+      if (persistDraft) saveDraft(draftKey, '');
     },
   }));
 
@@ -110,12 +126,12 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
       await onSubmit(body);
       if (clearOnSubmit) {
         setBody('');
-        saveDraft(draftKey, '');
+        if (persistDraft) saveDraft(draftKey, '');
       }
     } finally {
       setSubmitting(false);
     }
-  }, [disabled, body, onSubmit, clearOnSubmit, draftKey]);
+  }, [disabled, body, onSubmit, clearOnSubmit, draftKey, persistDraft]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
