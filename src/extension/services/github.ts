@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { graphql, type GraphqlResponseError } from '@octokit/graphql';
 import type {
   Category,
@@ -6,6 +7,7 @@ import type {
   DiscussionListPage,
   DiscussionSummary,
   Repository,
+  ViewerInfo,
 } from '../../shared/types';
 
 type GraphqlFn = ReturnType<typeof graphql.defaults>;
@@ -29,9 +31,29 @@ export class GitHubService {
 
   private require(): GraphqlFn {
     if (!this.client) {
-      throw new Error('Not signed in.');
+      throw new Error(vscode.l10n.t('Not signed in.'));
     }
     return this.client;
+  }
+
+  async getViewer(): Promise<ViewerInfo> {
+    const data = await this.run<{ viewer: { login: string; avatarUrl: string; name: string | null } }>(
+      VIEWER_QUERY,
+      {},
+    );
+    return {
+      login: data.viewer.login,
+      avatarUrl: data.viewer.avatarUrl,
+      name: data.viewer.name,
+    };
+  }
+
+  async listCategories(repo: Repository): Promise<Category[]> {
+    const data = await this.run<{ repository: { discussionCategories: { nodes: RawCategory[] } } }>(
+      LIST_CATEGORIES_QUERY,
+      { owner: repo.owner, name: repo.name },
+    );
+    return data.repository.discussionCategories.nodes.map(mapCategory);
   }
 
   async listDiscussions(
@@ -81,12 +103,47 @@ export class GitHubService {
     try {
       return await client<T>(query, variables);
     } catch (err) {
-      const ge = err as GraphqlResponseError<unknown>;
-      if (ge?.errors?.length) {
-        throw new Error(ge.errors.map((e) => e.message).join('; '));
-      }
-      throw err;
+      throw this.translateError(err);
     }
+  }
+
+  private translateError(err: unknown): Error {
+    const ge = err as GraphqlResponseError<unknown> & { status?: number };
+
+    if (ge?.errors?.length) {
+      const messages = ge.errors.map((e) => e.message);
+      const couldNotResolve = messages.find((m) => /Could not resolve to a Repository/i.test(m));
+      if (couldNotResolve) {
+        const match = couldNotResolve.match(/'([^']+)'/);
+        const name = match?.[1] ?? '';
+        return new Error(
+          vscode.l10n.t(
+            "Cannot access '{0}'. The repository may not exist, be private without sufficient token scope, or have Discussions disabled.",
+            name,
+          ),
+        );
+      }
+      const notFound = messages.find((m) => /not found|does not exist/i.test(m));
+      if (notFound) {
+        return new Error(vscode.l10n.t('Repository or discussion not found (404).'));
+      }
+      return new Error(messages.join('; '));
+    }
+
+    const status = ge?.status ?? (err as { status?: number } | null)?.status;
+    if (status === 401) {
+      return new Error(vscode.l10n.t('Authentication required (401). Please sign in again.'));
+    }
+    if (status === 403) {
+      return new Error(
+        vscode.l10n.t('Permission denied (403). The token may lack the required scopes.'),
+      );
+    }
+    if (status === 404) {
+      return new Error(vscode.l10n.t('Repository or discussion not found (404).'));
+    }
+
+    return err instanceof Error ? err : new Error(String(err));
   }
 }
 
@@ -233,6 +290,33 @@ interface GetDiscussionResponse {
     };
   };
 }
+
+const VIEWER_QUERY = /* GraphQL */ `
+  query AgoraViewer {
+    viewer {
+      login
+      avatarUrl
+      name
+    }
+  }
+`;
+
+const LIST_CATEGORIES_QUERY = /* GraphQL */ `
+  query AgoraListCategories($owner: String!, $name: String!) {
+    repository(owner: $owner, name: $name) {
+      discussionCategories(first: 25) {
+        nodes {
+          id
+          name
+          emoji
+          emojiHTML
+          description
+          isAnswerable
+        }
+      }
+    }
+  }
+`;
 
 const DISCUSSION_SUMMARY_FRAGMENT = /* GraphQL */ `
   fragment DiscussionSummary on Discussion {

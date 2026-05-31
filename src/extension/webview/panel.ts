@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { promises as fs } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import type { GitHubService } from '../services/github';
 import type { RepositoryDetector } from '../services/gitRemote';
 import type { AuthService } from '../services/auth';
+import { buildWebviewStrings } from '../services/webviewStrings';
 import type {
   HostEvent,
   HostMessage,
@@ -64,24 +66,27 @@ export class AgoraPanel {
     );
 
     this.disposables.push(
-      deps.repoDetector.onDidChange((repo) => {
-        this.post({ type: 'event', event: { kind: 'context', repo, viewer: deps.viewer() } });
-      }),
-      deps.auth.onDidChange(() => {
-        this.post({
-          type: 'event',
-          event: {
-            kind: 'context',
-            repo: deps.repoDetector.current,
-            viewer: deps.viewer(),
-          },
-        });
-      }),
+      deps.repoDetector.onDidChange(() => this.sendContext()),
+      deps.auth.onDidChange(() => this.sendContext()),
     );
   }
 
   navigate(event: HostEvent): void {
     this.post({ type: 'event', event });
+  }
+
+  private sendContext(): void {
+    this.post({ type: 'event', event: this.buildContextEvent() });
+  }
+
+  private buildContextEvent(): HostEvent {
+    return {
+      kind: 'context',
+      repo: this.deps.repoDetector.current,
+      viewer: this.deps.viewer(),
+      locale: vscode.env.language,
+      strings: buildWebviewStrings(),
+    };
   }
 
   private post(message: HostMessage): void {
@@ -112,6 +117,9 @@ export class AgoraPanel {
 
     html = html.replace(/<script /g, `<script nonce="${nonce}" `);
 
+    // Vite is configured with `inlineDynamicImports: true`, so the entire
+    // webview is shipped as a single script tag — no <link rel="modulepreload">
+    // or dynamic import() requests to worry about for CSP.
     const csp = [
       `default-src 'none'`,
       `img-src ${webview.cspSource} https: data:`,
@@ -158,14 +166,7 @@ export class AgoraPanel {
     const req = msg.request;
     switch (req.kind) {
       case 'ready': {
-        this.post({
-          type: 'event',
-          event: {
-            kind: 'context',
-            repo: this.deps.repoDetector.current,
-            viewer: this.deps.viewer(),
-          },
-        });
+        this.sendContext();
         return { ok: true };
       }
       case 'listDiscussions': {
@@ -211,8 +212,5 @@ export class AgoraPanel {
 }
 
 function makeNonce(): string {
-  let s = '';
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  for (let i = 0; i < 32; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return s;
+  return randomBytes(16).toString('base64');
 }

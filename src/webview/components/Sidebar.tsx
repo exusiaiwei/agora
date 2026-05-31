@@ -1,5 +1,6 @@
 import type { Category } from '@shared/types';
 import { cn } from '../lib/cn';
+import { useStrings } from '../lib/strings';
 
 interface SidebarProps {
   categories: Category[];
@@ -16,15 +17,16 @@ export function Sidebar({
   countsByCategory,
   onSelectCategory,
 }: SidebarProps): JSX.Element {
+  const strings = useStrings();
   return (
     <aside className="w-[220px] shrink-0 border-r border-[var(--vscode-widget-border,var(--vscode-panel-border))] py-3 px-1 overflow-y-auto">
       <div className="px-2 pb-2 text-xs uppercase tracking-wider text-muted font-medium">
-        Categories
+        {strings.categories}
       </div>
       <CategoryRow
         active={selectedCategoryId === null}
         emoji="📋"
-        name="All"
+        name={strings.all}
         count={totalCount}
         onClick={() => onSelectCategory(null)}
       />

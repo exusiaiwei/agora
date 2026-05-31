@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { onHostEvent, rpc } from './lib/vscode';
-import type { DiscussionDetail, DiscussionListPage, DiscussionSummary, Repository, ViewerInfo } from '@shared/types';
+import { setLocale } from './lib/time';
+import { StringsProvider, useStrings } from './lib/strings';
+import type {
+  DiscussionDetail,
+  DiscussionListPage,
+  DiscussionSummary,
+  Repository,
+  ViewerInfo,
+} from '@shared/types';
+import type { WebviewStringsDTO } from '@shared/strings';
 import { Sidebar } from './components/Sidebar';
 import { DiscussionList } from './components/DiscussionList';
 import { Thread } from './components/Thread';
@@ -12,6 +21,7 @@ interface AppState {
   view: View;
   repo: Repository | null;
   viewer: ViewerInfo | null;
+  strings: WebviewStringsDTO | null;
   list: {
     page: DiscussionListPage | null;
     selectedCategoryId: string | null;
@@ -26,7 +36,12 @@ interface AppState {
 }
 
 type Action =
-  | { type: 'setContext'; repo: Repository | null; viewer: ViewerInfo | null }
+  | {
+      type: 'setContext';
+      repo: Repository | null;
+      viewer: ViewerInfo | null;
+      strings: WebviewStringsDTO;
+    }
   | { type: 'navigate'; view: View }
   | { type: 'list/loading' }
   | { type: 'list/loaded'; page: DiscussionListPage }
@@ -40,6 +55,7 @@ const initialState: AppState = {
   view: { name: 'list' },
   repo: null,
   viewer: null,
+  strings: null,
   list: { page: null, selectedCategoryId: null, loading: false, error: null },
   thread: { discussion: null, loading: false, error: null },
 };
@@ -47,7 +63,12 @@ const initialState: AppState = {
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'setContext':
-      return { ...state, repo: action.repo, viewer: action.viewer };
+      return {
+        ...state,
+        repo: action.repo,
+        viewer: action.viewer,
+        strings: action.strings,
+      };
     case 'navigate':
       return { ...state, view: action.view };
     case 'list/loading':
@@ -78,27 +99,11 @@ export function App(): JSX.Element {
   const [state, dispatch] = useReducer(reducer, initialState);
   const readyRef = useRef(false);
 
-  useEffect(() => {
-    const off = onHostEvent((event) => {
-      if (event.kind === 'context') {
-        dispatch({ type: 'setContext', repo: event.repo, viewer: event.viewer });
-      } else if (event.kind === 'navigate') {
-        if (event.to.view === 'list') {
-          dispatch({ type: 'navigate', view: { name: 'list' } });
-        } else {
-          loadThread(event.to.number);
-        }
-      } else if (event.kind === 'refresh') {
-        if (state.view.name === 'list') loadList(state.list.selectedCategoryId);
-      }
-    });
-    if (!readyRef.current) {
-      readyRef.current = true;
-      void rpc({ kind: 'ready' });
-    }
-    return off;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Mirror latest state into refs so the host-event handler (subscribed once)
+  // can act on the *current* view/category rather than the values captured at
+  // the time the effect ran.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const loadList = useCallback(async (categoryId: string | null) => {
     dispatch({ type: 'list/loading' });
@@ -120,22 +125,77 @@ export function App(): JSX.Element {
     }
   }, []);
 
+  useEffect(() => {
+    const off = onHostEvent((event) => {
+      if (event.kind === 'context') {
+        setLocale(event.locale);
+        dispatch({
+          type: 'setContext',
+          repo: event.repo,
+          viewer: event.viewer,
+          strings: event.strings,
+        });
+      } else if (event.kind === 'navigate') {
+        if (event.to.view === 'list') {
+          dispatch({ type: 'navigate', view: { name: 'list' } });
+        } else {
+          void loadThread(event.to.number);
+        }
+      } else if (event.kind === 'refresh') {
+        const s = stateRef.current;
+        if (s.view.name === 'list') {
+          void loadList(s.list.selectedCategoryId);
+        } else {
+          void loadThread(s.view.number);
+        }
+      }
+    });
+    if (!readyRef.current) {
+      readyRef.current = true;
+      void rpc({ kind: 'ready' });
+    }
+    return off;
+  }, [loadList, loadThread]);
+
   // Initial / repo-change list load
   useEffect(() => {
     if (state.repo && state.view.name === 'list' && !state.list.page && !state.list.loading) {
       void loadList(state.list.selectedCategoryId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.repo, state.view.name, state.list.selectedCategoryId]);
+  }, [state.repo, state.view.name, state.list.selectedCategoryId, state.list.page, state.list.loading, loadList]);
+
+  if (!state.strings) {
+    return (
+      <div className="h-full w-full flex items-center justify-center text-muted">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <StringsProvider dto={state.strings}>
+      <AppBody state={state} loadList={loadList} loadThread={loadThread} dispatch={dispatch} />
+    </StringsProvider>
+  );
+}
+
+function AppBody({
+  state,
+  loadList,
+  loadThread,
+  dispatch,
+}: {
+  state: AppState;
+  loadList: (id: string | null) => void;
+  loadThread: (n: number) => void;
+  dispatch: (a: Action) => void;
+}): JSX.Element {
+  const strings = useStrings();
 
   if (!state.repo) {
     return (
       <Layout>
-        <EmptyState
-          icon="repo"
-          title="No GitHub repository detected"
-          hint="Open a folder with a GitHub remote, or set agora.repository in Settings."
-        />
+        <EmptyState icon="repo" title={strings.noRepoDetected} hint={strings.noRepoHint} />
       </Layout>
     );
   }
@@ -145,7 +205,7 @@ export function App(): JSX.Element {
       <Layout>
         {state.thread.loading && (
           <div className="p-10">
-            <Spinner label="Loading discussion…" />
+            <Spinner label={strings.loadingDiscussion} />
           </div>
         )}
         {state.thread.error && (
@@ -166,10 +226,9 @@ export function App(): JSX.Element {
     <Layout>
       <ListView
         state={state}
-        onSelectCategory={(id) => {
-          dispatch({ type: 'list/setCategory', id });
-        }}
+        onSelectCategory={(id) => dispatch({ type: 'list/setCategory', id })}
         onOpenDiscussion={(d) => loadThread(d.number)}
+        onRefresh={() => loadList(state.list.selectedCategoryId)}
       />
     </Layout>
   );
@@ -183,11 +242,14 @@ function ListView({
   state,
   onSelectCategory,
   onOpenDiscussion,
+  onRefresh,
 }: {
   state: AppState;
   onSelectCategory: (id: string | null) => void;
   onOpenDiscussion: (d: DiscussionSummary) => void;
+  onRefresh: () => void;
 }): JSX.Element {
+  const strings = useStrings();
   const page = state.list.page;
   const filtered = useMemo(() => {
     if (!page) return [];
@@ -209,7 +271,7 @@ function ListView({
       <Sidebar
         categories={page?.categories ?? []}
         selectedCategoryId={state.list.selectedCategoryId}
-        totalCount={page?.nodes.length ?? 0}
+        totalCount={page?.totalCount ?? 0}
         countsByCategory={countsByCategory}
         onSelectCategory={onSelectCategory}
       />
@@ -221,25 +283,25 @@ function ListView({
                 {state.repo?.owner}/{state.repo?.name}
               </div>
               <div className="text-xs text-muted">
-                {page ? `${page.totalCount} discussions` : ''}
+                {page ? strings.discussionCount(page.totalCount) : ''}
               </div>
             </div>
-            <Button icon="refresh" onClick={() => onSelectCategory(state.list.selectedCategoryId)}>
-              Refresh
+            <Button icon="refresh" onClick={onRefresh}>
+              {strings.refresh}
             </Button>
           </div>
         </header>
 
         {state.list.loading && (
           <div className="p-10">
-            <Spinner label="Loading discussions…" />
+            <Spinner label={strings.loadingDiscussions} />
           </div>
         )}
         {state.list.error && !state.list.loading && (
-          <EmptyState icon="error" title="Failed to load discussions" hint={state.list.error} />
+          <EmptyState icon="error" title={strings.failedToLoad} hint={state.list.error} />
         )}
         {!state.list.loading && !state.list.error && page && filtered.length === 0 && (
-          <EmptyState icon="comment-discussion" title="No discussions yet" />
+          <EmptyState icon="comment-discussion" title={strings.noDiscussions} />
         )}
         {!state.list.loading && filtered.length > 0 && (
           <div className="ag-fade-in">

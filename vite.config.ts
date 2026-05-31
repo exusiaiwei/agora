@@ -16,6 +16,10 @@ export default defineConfig({
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
+        // Single bundle keeps our strict CSP (script-src 'nonce-...') working;
+        // dynamic chunks would need either a wider CSP or per-chunk nonce
+        // rewriting that we don't currently do.
+        inlineDynamicImports: true,
       },
     },
   },

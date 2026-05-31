@@ -21,7 +21,7 @@ interface DiscussionNode {
 
 interface LoadMoreNode {
   kind: 'loadMore';
-  categoryId: string | null;
+  categoryId: string;
   cursor: string;
 }
 
@@ -46,7 +46,7 @@ export class DiscussionsTreeProvider
 
   private categoriesById = new Map<string, CategoryCache>();
   private categoryOrder: string[] = [];
-  private loadingRoot = false;
+  private rootLoaded = false;
   private rootError: string | null = null;
   private repo: Repository | null = null;
 
@@ -58,6 +58,7 @@ export class DiscussionsTreeProvider
   refresh(): void {
     this.categoriesById.clear();
     this.categoryOrder = [];
+    this.rootLoaded = false;
     this.rootError = null;
     this._onDidChange.fire(undefined);
   }
@@ -135,15 +136,11 @@ export class DiscussionsTreeProvider
   }
 
   private async getRoot(): Promise<Node[]> {
-    if (this.loadingRoot) return [];
-    if (this.categoryOrder.length === 0 && !this.rootError) {
-      this.loadingRoot = true;
+    if (!this.rootLoaded && !this.rootError) {
       try {
-        await this.loadPage(null, null);
+        await this.loadCategories();
       } catch (err) {
         this.rootError = err instanceof Error ? err.message : String(err);
-      } finally {
-        this.loadingRoot = false;
       }
     }
     if (this.rootError) {
@@ -158,28 +155,10 @@ export class DiscussionsTreeProvider
     }));
   }
 
-  private async getCategoryChildren(categoryId: string): Promise<Node[]> {
-    const cache = this.categoriesById.get(categoryId);
-    if (!cache) return [];
-    const nodes: Node[] = cache.discussions.map((d) => ({ kind: 'discussion', discussion: d }));
-    if (cache.discussions.length === 0) {
-      nodes.push({ kind: 'info', label: vscode.l10n.t('No discussions in this category.') });
-    }
-    if (cache.hasNextPage && cache.cursor) {
-      nodes.push({ kind: 'loadMore', categoryId, cursor: cache.cursor });
-    }
-    return nodes;
-  }
-
-  async loadPage(categoryId: string | null, cursor: string | null): Promise<void> {
+  private async loadCategories(): Promise<void> {
     if (!this.repo) return;
-    const page = await this.github.listDiscussions(this.repo, {
-      categoryId,
-      cursor,
-      first: vscode.workspace.getConfiguration('agora').get<number>('pageSize', 25),
-    });
-
-    for (const cat of page.categories) {
+    const cats = await this.github.listCategories(this.repo);
+    for (const cat of cats) {
       if (!this.categoriesById.has(cat.id)) {
         this.categoriesById.set(cat.id, {
           category: cat,
@@ -191,17 +170,53 @@ export class DiscussionsTreeProvider
         this.categoryOrder.push(cat.id);
       }
     }
+    this.rootLoaded = true;
+  }
+
+  private async getCategoryChildren(categoryId: string): Promise<Node[]> {
+    const cache = this.categoriesById.get(categoryId);
+    if (!cache) return [];
+    if (!cache.loaded) {
+      try {
+        await this.loadCategoryPage(categoryId, null);
+      } catch (err) {
+        return [{ kind: 'info', label: err instanceof Error ? err.message : String(err) }];
+      }
+    }
+    const nodes: Node[] = cache.discussions.map((d) => ({ kind: 'discussion', discussion: d }));
+    if (cache.discussions.length === 0) {
+      nodes.push({ kind: 'info', label: vscode.l10n.t('No discussions in this category.') });
+    }
+    if (cache.hasNextPage && cache.cursor) {
+      nodes.push({ kind: 'loadMore', categoryId, cursor: cache.cursor });
+    }
+    return nodes;
+  }
+
+  /**
+   * Fetches a page of discussions scoped to a single category. Cursors are
+   * opaque per (categoryId, orderBy) — keeping the call site categoryId-
+   * scoped is what makes pagination correct.
+   */
+  async loadCategoryPage(categoryId: string, cursor: string | null): Promise<void> {
+    if (!this.repo) return;
+    const cache = this.categoriesById.get(categoryId);
+    if (!cache) return;
+
+    const page = await this.github.listDiscussions(this.repo, {
+      categoryId,
+      cursor,
+      first: vscode.workspace.getConfiguration('agora').get<number>('pageSize', 25),
+    });
 
     for (const d of page.nodes) {
-      const cache = this.categoriesById.get(d.category.id);
-      if (!cache) continue;
       if (!cache.discussions.some((existing) => existing.id === d.id)) {
         cache.discussions.push(d);
       }
-      cache.cursor = page.endCursor;
-      cache.hasNextPage = page.hasNextPage;
-      cache.loaded = true;
     }
+    cache.cursor = page.endCursor;
+    cache.hasNextPage = page.hasNextPage;
+    cache.loaded = true;
 
     this._onDidChange.fire(undefined);
   }

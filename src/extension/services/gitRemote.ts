@@ -107,8 +107,8 @@ export class RepositoryDetector implements vscode.Disposable {
     for (const repo of this.gitApi.repositories) {
       const remotes = repo.state.remotes;
       const ordered = [
-        ...remotes.filter((r) => r.name === 'upstream'),
         ...remotes.filter((r) => r.name === 'origin'),
+        ...remotes.filter((r) => r.name === 'upstream'),
         ...remotes.filter((r) => r.name !== 'origin' && r.name !== 'upstream'),
       ];
       for (const remote of ordered) {

@@ -3,6 +3,8 @@ import { Avatar, Badge, IconButton } from './primitives';
 import { Markdown } from './Markdown';
 import { relativeTime, absoluteTime } from '../lib/time';
 import { cn } from '../lib/cn';
+import { useStrings } from '../lib/strings';
+import type { WebviewStrings } from '@shared/strings';
 
 interface ThreadProps {
   discussion: DiscussionDetail;
@@ -11,6 +13,7 @@ interface ThreadProps {
 }
 
 export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps): JSX.Element {
+  const strings = useStrings();
   const answer = d.comments.find((c) => c.isAnswer);
   const others = d.comments.filter((c) => !c.isAnswer);
 
@@ -18,7 +21,7 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
     <div className="ag-fade-in flex flex-col h-full">
       <header className="sticky top-0 z-10 backdrop-blur-sm bg-[color-mix(in_srgb,var(--vscode-editor-background)_92%,transparent)] border-b border-[var(--vscode-widget-border,var(--vscode-panel-border))]">
         <div className="max-w-[var(--ag-content-max)] mx-auto px-6 py-3 flex items-center gap-2">
-          <IconButton icon="arrow-left" label="Back" onClick={onBack} />
+          <IconButton icon="arrow-left" label={strings.back} onClick={onBack} />
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
               <span className="text-xs text-muted">
@@ -28,22 +31,22 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
               <span className="text-xs text-muted tabular-nums">#{d.number}</span>
               {d.locked && (
                 <Badge tone="muted">
-                  <span className="codicon codicon-lock" aria-hidden="true" /> Locked
+                  <span className="codicon codicon-lock" aria-hidden="true" /> {strings.locked}
                 </Badge>
               )}
               {d.closed && !d.answered && (
                 <Badge tone="muted">
-                  <span className="codicon codicon-check" aria-hidden="true" /> Closed
+                  <span className="codicon codicon-check" aria-hidden="true" /> {strings.closed}
                 </Badge>
               )}
               {d.answered && (
                 <Badge tone="success">
-                  <span className="codicon codicon-pass-filled" aria-hidden="true" /> Answered
+                  <span className="codicon codicon-pass-filled" aria-hidden="true" /> {strings.answered}
                 </Badge>
               )}
             </div>
           </div>
-          <IconButton icon="link-external" label="Open in browser" onClick={() => onOpenInBrowser(d.url)} />
+          <IconButton icon="link-external" label={strings.openInBrowser} onClick={() => onOpenInBrowser(d.url)} />
         </div>
       </header>
 
@@ -111,20 +114,20 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
             <section className="mb-8">
               <div className="text-xs font-medium uppercase tracking-wider text-success mb-2 flex items-center gap-1">
                 <span className="codicon codicon-pass-filled" aria-hidden="true" />
-                Marked as answer
+                {strings.markedAsAnswer}
               </div>
-              <Comment node={answer} highlight />
+              <Comment node={answer} highlight strings={strings} />
             </section>
           )}
 
           <section>
             <div className="text-xs font-medium uppercase tracking-wider text-muted mb-3">
-              {d.commentCount} {d.commentCount === 1 ? 'comment' : 'comments'}
+              {strings.commentCount(d.commentCount)}
             </div>
             <ul className="flex flex-col gap-6">
               {others.map((c) => (
                 <li key={c.id}>
-                  <Comment node={c} />
+                  <Comment node={c} strings={strings} />
                 </li>
               ))}
             </ul>
@@ -135,7 +138,15 @@ export function Thread({ discussion: d, onBack, onOpenInBrowser }: ThreadProps):
   );
 }
 
-function Comment({ node, highlight }: { node: CommentNode; highlight?: boolean }): JSX.Element {
+function Comment({
+  node,
+  highlight,
+  strings,
+}: {
+  node: CommentNode;
+  highlight?: boolean;
+  strings: WebviewStrings;
+}): JSX.Element {
   return (
     <article
       className={cn(
@@ -157,7 +168,7 @@ function Comment({ node, highlight }: { node: CommentNode; highlight?: boolean }
         {node.isAnswer && (
           <Badge tone="success" className="ml-1">
             <span className="codicon codicon-pass-filled" aria-hidden="true" />
-            Answer
+            {strings.answer}
           </Badge>
         )}
         <div className="flex-1" />

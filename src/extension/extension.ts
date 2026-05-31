@@ -7,7 +7,7 @@ import { AgoraPanel } from './webview/panel';
 import type { ViewerInfo } from '../shared/types';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const auth = new AuthService();
+  const auth = new AuthService(context);
   const github = new GitHubService();
   const repoDetector = new RepositoryDetector();
   let viewer: ViewerInfo | null = null;
@@ -30,13 +30,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const onAuthChanged = async (): Promise<void> => {
     const session = auth.currentSession;
     github.setToken(session?.accessToken ?? null);
-    viewer = session
-      ? {
-          login: session.account.label,
-          avatarUrl: '',
-          name: session.account.label,
-        }
-      : null;
+    if (session) {
+      try {
+        viewer = await github.getViewer();
+      } catch (err) {
+        // Don't block activation on viewer fetch failures; surface as a
+        // log entry but keep operating with a null viewer.
+        console.warn('[agora] viewer fetch failed:', err);
+        viewer = null;
+      }
+    } else {
+      viewer = null;
+    }
     await updateContext();
     tree.refresh();
   };
@@ -107,9 +112,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand(
       '_agora.loadMore',
-      async (categoryId: string | null, cursor: string) => {
+      async (categoryId: string, cursor: string) => {
         try {
-          await tree.loadPage(categoryId, cursor);
+          await tree.loadCategoryPage(categoryId, cursor);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           void vscode.window.showErrorMessage(msg);

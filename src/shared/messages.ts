@@ -4,6 +4,7 @@ import type {
   Repository,
   ViewerInfo,
 } from './types';
+import type { WebviewStringsDTO } from './strings';
 
 /**
  * Messages from the webview → extension host.
@@ -24,7 +25,13 @@ export interface WebviewRpcMessage {
 
 /** Messages from the extension host → webview. */
 export type HostEvent =
-  | { kind: 'context'; repo: Repository | null; viewer: ViewerInfo | null }
+  | {
+      kind: 'context';
+      repo: Repository | null;
+      viewer: ViewerInfo | null;
+      locale: string;
+      strings: WebviewStringsDTO;
+    }
   | { kind: 'navigate'; to: { view: 'list' } | { view: 'discussion'; number: number } }
   | { kind: 'refresh' };
 
