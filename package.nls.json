@@ -1,0 +1,14 @@
+{
+  "agora.viewContainer.title": "Agora",
+  "agora.view.discussions": "Discussions",
+  "agora.welcome.signedOut": "Sign in to GitHub to view Discussions for this repository.\n[Sign in to GitHub](command:agora.signIn)",
+  "agora.welcome.noRepo": "No GitHub repository detected in the current workspace.\nOpen a folder with a GitHub remote, or [set one manually](command:workbench.action.openSettings?%5B%22agora.repository%22%5D).",
+  "agora.command.signIn": "Sign in to GitHub",
+  "agora.command.signOut": "Sign out",
+  "agora.command.refresh": "Refresh",
+  "agora.command.openHome": "Open Discussions",
+  "agora.command.openDiscussion": "Open discussion",
+  "agora.command.openInBrowser": "Open on GitHub",
+  "agora.config.repository": "Override the repository (owner/name). Leave empty to auto-detect from the current workspace's git remote.",
+  "agora.config.pageSize": "Number of discussions to load per page."
+}

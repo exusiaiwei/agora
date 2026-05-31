@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build, package, publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify tag matches package.json version
+        id: ver
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+          echo "version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Package VSIX
+        run: |
+          npm run package
+          mv agora.vsix "agora-${{ steps.ver.outputs.version }}.vsix"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          files: agora-${{ steps.ver.outputs.version }}.vsix
+
+      # ── Optional Marketplace publishing ──
+      # Uncomment after adding VSCE_PAT (and optionally OVSX_PAT) repository secrets.
+      #
+      # - name: Publish to Visual Studio Marketplace
+      #   env:
+      #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      #   run: npx --no-install vsce publish --no-dependencies --packagePath agora-${{ steps.ver.outputs.version }}.vsix
+      #
+      # - name: Publish to Open VSX Registry
+      #   env:
+      #     OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      #   run: npx --no-install ovsx publish agora-${{ steps.ver.outputs.version }}.vsix

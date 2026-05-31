@@ -1,0 +1,14 @@
+{
+  "agora.viewContainer.title": "Agora",
+  "agora.view.discussions": "讨论",
+  "agora.welcome.signedOut": "登录 GitHub 后查看本仓库的讨论。\n[登录 GitHub](command:agora.signIn)",
+  "agora.welcome.noRepo": "未在当前工作区检测到 GitHub 仓库。\n请打开包含 GitHub remote 的目录，或[手动设置仓库](command:workbench.action.openSettings?%5B%22agora.repository%22%5D)。",
+  "agora.command.signIn": "登录 GitHub",
+  "agora.command.signOut": "退出登录",
+  "agora.command.refresh": "刷新",
+  "agora.command.openHome": "打开讨论",
+  "agora.command.openDiscussion": "打开讨论",
+  "agora.command.openInBrowser": "在 GitHub 中打开",
+  "agora.config.repository": "覆盖默认仓库 (owner/name)。留空则从当前工作区的 git remote 自动检测。",
+  "agora.config.pageSize": "每页加载的讨论数。"
+}
