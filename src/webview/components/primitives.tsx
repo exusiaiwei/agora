@@ -73,6 +73,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       type="button"
       title={label}
       aria-label={label}
+      aria-busy={busy || undefined}
       disabled={busy || disabled}
       className={cn(
         'inline-flex items-center justify-center w-6 h-6 rounded text-fg/80 hover:text-fg hover:bg-hover transition-colors duration-100',
