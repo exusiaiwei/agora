@@ -268,7 +268,9 @@ function AppBody({
             onBack={() => dispatch({ type: 'navigate', view: { name: 'list' } })}
             onOpenInBrowser={(url) => rpc({ kind: 'openInBrowser', url })}
             onChange={() => {
-              if (state.view.name === 'thread') loadThread(state.view.number, { silent: true });
+              if (state.view.name === 'thread') {
+                return loadThread(state.view.number, { silent: true });
+              }
             }}
           />
         )}
