@@ -15,8 +15,13 @@ interface ThreadProps {
   discussion: DiscussionDetail;
   onBack: () => void;
   onOpenInBrowser: (url: string) => void;
-  /** Called after any successful mutation so the parent can refresh state. */
-  onChange: () => void;
+  /**
+   * Called after any successful mutation so the parent can refresh
+   * state. Returns a Promise when the parent needs to signal
+   * completion (e.g. the refresh button waits on it to stop
+   * spinning); mutation callers can ignore the return value.
+   */
+  onChange: () => Promise<void> | void;
 }
 
 export function Thread(props: ThreadProps): JSX.Element {
@@ -37,7 +42,18 @@ function ThreadInner({ discussion: d, onBack, onOpenInBrowser, onChange }: Threa
   const others = d.comments.filter((c) => !c.isAnswer);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(d.title);
+  const [refreshing, setRefreshing] = useState(false);
   const threadEndComposerRef = useRef<ComposerHandle>(null);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.resolve(onChange());
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onChange, refreshing]);
 
   // Selecting text inside the discussion body funnels into the
   // top-of-thread new-comment composer.
@@ -120,6 +136,12 @@ function ThreadInner({ discussion: d, onBack, onOpenInBrowser, onChange }: Threa
               )}
             </div>
           </div>
+          <IconButton
+            icon="refresh"
+            label={strings.refresh}
+            busy={refreshing}
+            onClick={() => void handleRefresh()}
+          />
           <IconButton icon="link-external" label={strings.openInBrowser} onClick={() => onOpenInBrowser(d.url)} />
         </div>
       </header>

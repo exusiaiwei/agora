@@ -57,10 +57,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: string;
   label: string;
+  /** When true, swap the glyph for a spinning loader and disable
+   *  the button. Used by self-contained async actions (e.g. the
+   *  thread refresh button) that want in-place progress feedback. */
+  busy?: boolean;
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { icon, label, className, ...rest },
+  { icon, label, className, busy, disabled, ...rest },
   ref,
 ) {
   return (
@@ -69,13 +73,18 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       type="button"
       title={label}
       aria-label={label}
+      disabled={busy || disabled}
       className={cn(
         'inline-flex items-center justify-center w-6 h-6 rounded text-fg/80 hover:text-fg hover:bg-hover transition-colors duration-100',
+        'disabled:opacity-60 disabled:cursor-default disabled:hover:bg-transparent',
         className,
       )}
       {...rest}
     >
-      <span className={`codicon codicon-${icon}`} aria-hidden="true" />
+      <span
+        className={cn('codicon', busy ? 'codicon-loading animate-spin' : `codicon-${icon}`)}
+        aria-hidden="true"
+      />
     </button>
   );
 });
