@@ -41,12 +41,26 @@ window.addEventListener('message', (e: MessageEvent<HostMessage>) => {
   }
 });
 
+const RPC_TIMEOUT_MS = 30_000;
+
 export function rpc<R extends WebviewRequest>(request: R): Promise<HostRpcResult<R>> {
   const requestId = `r${nextId++}`;
   return new Promise<HostRpcResult<R>>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (pending.delete(requestId)) {
+        reject(new Error(`Request timed out (${request.kind})`));
+      }
+    }, RPC_TIMEOUT_MS);
+
     pending.set(requestId, {
-      resolve: (v) => resolve(v as HostRpcResult<R>),
-      reject,
+      resolve: (v) => {
+        clearTimeout(timer);
+        resolve(v as HostRpcResult<R>);
+      },
+      reject: (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
     });
     vscode.postMessage({ type: 'rpc', requestId, request });
   });
