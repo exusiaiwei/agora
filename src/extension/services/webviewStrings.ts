@@ -55,5 +55,9 @@ export function buildWebviewStrings(): WebviewStringsDTO {
     repliesClosedNotice: vscode.l10n.t(
       'This discussion is locked — replies are closed.',
     ),
+    signIn: vscode.l10n.t('Sign in with GitHub'),
+    signInHint: vscode.l10n.t(
+      'Sign in to view and participate in discussions.',
+    ),
   };
 }

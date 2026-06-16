@@ -120,6 +120,22 @@ function SidebarBody({
 }): JSX.Element {
   const strings = useStrings();
 
+  if (!state.viewer) {
+    return (
+      <div className="h-full p-3 text-sm text-muted ag-fade-in">
+        <p className="leading-relaxed">{strings.signInHint}</p>
+        <button
+          type="button"
+          onClick={() => rpc({ kind: 'signIn' })}
+          className="mt-3 inline-flex items-center gap-1.5 h-[28px] px-3 rounded text-sm bg-btn-bg text-btn-fg hover:bg-btn-hover"
+        >
+          <span className="codicon codicon-github" aria-hidden="true" />
+          {strings.signIn}
+        </button>
+      </div>
+    );
+  }
+
   if (!state.repo) {
     return (
       <div className="h-full p-3 text-sm text-muted ag-fade-in">

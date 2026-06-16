@@ -66,6 +66,9 @@ export interface WebviewStringsDTO {
   addReaction: string;
   // Locked thread notice
   repliesClosedNotice: string;
+  // Auth
+  signIn: string;
+  signInHint: string;
 }
 
 export function inflate(dto: WebviewStringsDTO): WebviewStrings {

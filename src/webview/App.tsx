@@ -217,6 +217,23 @@ function AppBody({
 }): JSX.Element {
   const strings = useStrings();
 
+  if (!state.viewer) {
+    return (
+      <Layout>
+        <EmptyState
+          icon="github"
+          title={strings.signIn}
+          hint={strings.signInHint}
+          action={
+            <Button variant="primary" icon="github" onClick={() => rpc({ kind: 'signIn' })}>
+              {strings.signIn}
+            </Button>
+          }
+        />
+      </Layout>
+    );
+  }
+
   if (!state.repo) {
     return (
       <Layout>

@@ -64,5 +64,8 @@
   "Delete this comment? This cannot be undone.": "Delete this comment? This cannot be undone.",
   "Delete this discussion and all its comments? This cannot be undone.": "Delete this discussion and all its comments? This cannot be undone.",
   "Add reaction": "Add reaction",
-  "This discussion is locked — replies are closed.": "This discussion is locked — replies are closed."
+  "This discussion is locked — replies are closed.": "This discussion is locked — replies are closed.",
+  "Sign in with GitHub": "Sign in with GitHub",
+  "Sign in to view and participate in discussions.": "Sign in to view and participate in discussions.",
+  "Request timed out. Check your network connection and proxy settings.": "Request timed out. Check your network connection and proxy settings."
 }

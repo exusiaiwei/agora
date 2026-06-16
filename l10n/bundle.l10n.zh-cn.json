@@ -64,5 +64,8 @@
   "Delete this comment? This cannot be undone.": "确定删除这条评论？此操作不可撤销。",
   "Delete this discussion and all its comments? This cannot be undone.": "确定删除这条讨论及其所有评论？此操作不可撤销。",
   "Add reaction": "添加反应",
-  "This discussion is locked — replies are closed.": "该讨论已锁定，无法回复。"
+  "This discussion is locked — replies are closed.": "该讨论已锁定，无法回复。",
+  "Sign in with GitHub": "使用 GitHub 登录",
+  "Sign in to view and participate in discussions.": "登录以查看和参与讨论。",
+  "Request timed out. Check your network connection and proxy settings.": "请求超时。请检查网络连接和代理设置。"
 }
