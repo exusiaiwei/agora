@@ -125,15 +125,12 @@ function PanelApp(): JSX.Element {
       const page = await rpc({ kind: 'listDiscussions', categoryId, cursor: null });
       dispatch({ type: 'list/loaded', page });
     } catch (err) {
-      dispatch({ type: 'list/error', error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      dispatch({ type: 'list/error', error: msg || 'Unknown error' });
     }
   }, []);
 
   const loadThread = useCallback(async (number: number, opts?: { silent?: boolean }) => {
-    // `silent` reloads keep the previous discussion on screen until
-    // the new payload arrives — used after a mutation (post / edit /
-    // react / lock / …) so the thread doesn't blink to a spinner for
-    // every small action. Initial navigation still shows the spinner.
     if (!opts?.silent) {
       dispatch({ type: 'thread/loading', number });
     }
@@ -141,12 +138,9 @@ function PanelApp(): JSX.Element {
       const discussion = await rpc({ kind: 'getDiscussion', number });
       dispatch({ type: 'thread/loaded', discussion });
     } catch (err) {
-      // In silent mode the user is staring at a working thread; we
-      // don't want to nuke it with an error screen because a single
-      // refetch hiccuped. The next mutation will re-attempt, and if
-      // something is truly broken the user can hit refresh.
       if (!opts?.silent) {
-        dispatch({ type: 'thread/error', error: err instanceof Error ? err.message : String(err) });
+        const msg = err instanceof Error ? err.message : String(err);
+        dispatch({ type: 'thread/error', error: msg || 'Unknown error' });
       } else {
         // eslint-disable-next-line no-console
         console.warn('silent reload failed:', err);
@@ -353,11 +347,31 @@ function ListView({
             <Spinner label={strings.loadingDiscussions} />
           </div>
         )}
-        {state.list.error && !state.list.loading && (
-          <EmptyState icon="error" title={strings.failedToLoad} hint={state.list.error} />
+        {!state.list.loading && state.list.error && (
+          <EmptyState
+            icon="error"
+            title={strings.failedToLoad}
+            hint={state.list.error}
+            action={
+              <Button icon="refresh" onClick={onRefresh}>
+                {strings.refresh}
+              </Button>
+            }
+          />
         )}
         {!state.list.loading && !state.list.error && page && filtered.length === 0 && (
           <EmptyState icon="comment-discussion" title={strings.noDiscussions} />
+        )}
+        {!state.list.loading && !state.list.error && !page && (
+          <EmptyState
+            icon="error"
+            title={strings.failedToLoad}
+            action={
+              <Button icon="refresh" onClick={onRefresh}>
+                {strings.refresh}
+              </Button>
+            }
+          />
         )}
         {!state.list.loading && filtered.length > 0 && (
           <div className="ag-fade-in">

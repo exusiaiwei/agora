@@ -65,7 +65,8 @@ export function SidebarApp(): JSX.Element {
       const page = await rpc({ kind: 'listDiscussions', categoryId: null, cursor: null });
       dispatch({ type: 'loaded', page });
     } catch (err) {
-      dispatch({ type: 'error', error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      dispatch({ type: 'error', error: msg || 'Unknown error' });
     }
   }, []);
 
@@ -144,11 +145,34 @@ function SidebarBody({
           <Spinner label={strings.loadingDiscussions} />
         </div>
       )}
-      {state.error && !state.loading && (
-        <div className="px-3 py-4 text-xs text-error">{state.error}</div>
+      {!state.loading && state.error && (
+        <div className="px-3 py-4">
+          <div className="text-xs text-error">{state.error}</div>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="mt-2 inline-flex items-center gap-1.5 h-[24px] px-2 rounded text-xs bg-btn-secondary-bg text-btn-secondary-fg hover:bg-[var(--vscode-button-secondaryHoverBackground)]"
+          >
+            <span className="codicon codicon-refresh" aria-hidden="true" />
+            {strings.refresh}
+          </button>
+        </div>
       )}
       {!state.loading && !state.error && state.page && (
         <SidebarList page={state.page} />
+      )}
+      {!state.loading && !state.error && !state.page && (
+        <div className="px-3 py-4">
+          <div className="text-xs text-muted">{strings.failedToLoad}</div>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="mt-2 inline-flex items-center gap-1.5 h-[24px] px-2 rounded text-xs bg-btn-secondary-bg text-btn-secondary-fg hover:bg-[var(--vscode-button-secondaryHoverBackground)]"
+          >
+            <span className="codicon codicon-refresh" aria-hidden="true" />
+            {strings.refresh}
+          </button>
+        </div>
       )}
     </div>
   );
