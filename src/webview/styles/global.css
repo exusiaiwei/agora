@@ -186,3 +186,10 @@ body {
 .ag-fade-in {
   animation: ag-fade-in 160ms cubic-bezier(0.2, 0, 0, 1);
 }
+
+@keyframes ag-spin {
+  to { transform: rotate(360deg); }
+}
+.codicon-loading {
+  animation: ag-spin 1s linear infinite;
+}

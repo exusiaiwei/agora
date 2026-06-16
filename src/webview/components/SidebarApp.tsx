@@ -91,10 +91,10 @@ export function SidebarApp(): JSX.Element {
 
   // Load when context arrives / repo changes
   useEffect(() => {
-    if (state.repo && !state.page && !state.loading) {
+    if (state.repo && !state.page && !state.loading && !state.error) {
       void load();
     }
-  }, [state.repo, state.page, state.loading, load]);
+  }, [state.repo, state.page, state.loading, state.error, load]);
 
   if (!state.strings) {
     return (

@@ -121,11 +121,11 @@ export class GitHubService {
     title: string;
     body: string;
   }): Promise<{ number: number; url: string }> {
-    const data = await this.run<{ addDiscussion: { discussion: { number: number; url: string } } }>(
+    const data = await this.run<{ createDiscussion: { discussion: { number: number; url: string } } }>(
       ADD_DISCUSSION_MUTATION,
       { input: args },
     );
-    return data.addDiscussion.discussion;
+    return data.createDiscussion.discussion;
   }
 
   async updateDiscussion(args: {
@@ -199,10 +199,22 @@ export class GitHubService {
 
   private async run<T>(query: string, variables: Record<string, unknown>): Promise<T> {
     const client = this.require();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
     try {
-      return await client<T>(query, variables);
+      return await client<T>(query, {
+        ...variables,
+        request: { signal: controller.signal },
+      });
     } catch (err) {
+      if (controller.signal.aborted) {
+        throw new Error(
+          vscode.l10n.t('Request timed out. Check your network connection and proxy settings.'),
+        );
+      }
       throw this.translateError(err);
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

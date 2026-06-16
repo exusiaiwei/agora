@@ -184,10 +184,10 @@ function PanelApp(): JSX.Element {
 
   // Initial / repo-change list load
   useEffect(() => {
-    if (state.repo && state.view.name === 'list' && !state.list.page && !state.list.loading) {
+    if (state.repo && state.view.name === 'list' && !state.list.page && !state.list.loading && !state.list.error) {
       void loadList(state.list.selectedCategoryId);
     }
-  }, [state.repo, state.view.name, state.list.selectedCategoryId, state.list.page, state.list.loading, loadList]);
+  }, [state.repo, state.view.name, state.list.selectedCategoryId, state.list.page, state.list.loading, state.list.error, loadList]);
 
   if (!state.strings) {
     return (

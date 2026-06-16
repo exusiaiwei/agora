@@ -183,7 +183,7 @@ export function EmptyState({
 export function Spinner({ label }: { label?: string }): JSX.Element {
   return (
     <div className="inline-flex items-center gap-2 text-muted text-sm">
-      <span className="codicon codicon-loading animate-spin" aria-hidden="true" />
+      <span className="codicon codicon-loading" aria-hidden="true" />
       {label}
     </div>
   );
